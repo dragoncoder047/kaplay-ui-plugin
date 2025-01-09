@@ -47,13 +47,13 @@ export default function kaplayUi(k: KAPLAYCtx) {
                 id: "ui",
                 add(this: GameObj) {
                     // Initialisation
-                    this.use(_type)
-                    this.use("canfocus")
+                    this.tag(_type)
+                    this.tag("canfocus")
                     switch (_type) {
                         // @ts-ignore
                         case "radiobutton":
                             if (_group) {
-                                this.use(_group)
+                                this.tag(_group)
                             }
                         // fallthrough
                         case "checkbox":
@@ -63,13 +63,13 @@ export default function kaplayUi(k: KAPLAYCtx) {
                             break;
                     }
                     this.onClick(() => {
-                        this.use("pressed")
+                        this.tag("pressed")
                         this.setFocus()
                         this.trigger("pressed")
                     });
                     this.onUpdate(() => {
                         if (!k.isMouseDown() && this.is("pressed")) {
-                            this.unuse("pressed")
+                            this.untag("pressed")
                             if (_type === "button") {
                                 if (this.isHovering()) {
                                     this.trigger("action")
@@ -120,21 +120,21 @@ export default function kaplayUi(k: KAPLAYCtx) {
                 },
                 setChecked(this: GameObj, checked: boolean) {
                     if (checked) {
-                        this.use("checked")
+                        this.tag("checked")
                     }
                     else {
-                        this.unuse("checked")
+                        this.untag("checked")
                     }
                     this.trigger("checked", checked)
                 },
                 setFocus(this: GameObj) {
                     k.get("focus", { recursive: true }).forEach((uiElement: GameObj) => {
                         if (uiElement !== this) {
-                            uiElement.unuse("focus")
+                            uiElement.untag("focus")
                             uiElement.trigger("blur")
                         }
                     })
-                    this.use("focus")
+                    this.tag("focus")
                     this.trigger("focus")
                 }
             }
@@ -148,7 +148,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
             return {
                 add(this: GameObj) {
                     // Initialisation
-                    this.use(_type)
+                    this.tag(_type)
                     this.doLayout()
                 },
                 doLayout(this: GameObj) {

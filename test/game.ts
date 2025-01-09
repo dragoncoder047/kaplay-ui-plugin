@@ -74,8 +74,6 @@ function newCheckBox({ position = k.vec2(), label = "", group = "", width = 0 } 
         k.color(k.BLACK)
     ])
 
-    //checkbox.onPressed(() => { checkbox.color = GREEN; })
-    //checkbox.onReleased(() => { checkbox.color = checkbox.isChecked() ? RED : BLUE; })
     checkbox.onChecked(checked => { checkbox.children[0].frame = checked ? 1 : 0; })
     checkbox.onFocus(() => { checkbox.outline.color = k.BLACK; })
     checkbox.onBlur(() => { checkbox.outline.color = k.WHITE; })
@@ -95,7 +93,7 @@ function newRadio({ position = k.vec2(), label = "", group = "", width = 0 } = {
         k.area(),
         k.color(k.WHITE),
         k.outline(1, k.WHITE),
-        k.ui({ type: "radiobutton", group: "radiogroup" })
+        k.ui({ type: "radiobutton", group: group })
     ])
     radio.add([
         k.sprite("ui", { frame: 2 }),
@@ -111,8 +109,6 @@ function newRadio({ position = k.vec2(), label = "", group = "", width = 0 } = {
         k.color(k.BLACK)
     ])
 
-    //radio.onPressed(() => {  })
-    //radio.onReleased(() => {  })
     radio.onChecked(checked => { radio.children[0].frame = checked ? 3 : 2; })
     radio.onFocus(() => { radio.outline.color = k.BLACK; })
     radio.onBlur(() => { radio.outline.color = k.WHITE; })
