@@ -1,4 +1,4 @@
-import { KAPLAYCtx, Comp, GameObj } from "kaplay";
+import { KAPLAYCtx, Comp, GameObj, Vec2, KEventController } from "kaplay";
 
 export default function kaplayUi(k: KAPLAYCtx) {
     type UiType = "button" | "radiobutton" | "checkbox";
@@ -8,6 +8,14 @@ export default function kaplayUi(k: KAPLAYCtx) {
         checked?: boolean;
     };
     interface UiElementComp extends Comp {
+        onPressed(action: any): KEventController;
+        onReleased(action: any): KEventController;
+        onChecked(action: any): KEventController;
+        onFocus(action: any): KEventController;
+        onBlur(action: any): KEventController;
+        onAction(action: any): KEventController;
+        isPressed(): boolean;
+        isChecked(): boolean;
         setChecked(checked: boolean): void;
         setFocus(): void;
     }
@@ -22,14 +30,17 @@ export default function kaplayUi(k: KAPLAYCtx) {
     interface LayoutElementComp extends Comp {
         doLayout(): void;
         type: LayoutType;
-        padding: number;
-        spacing: number;
+        padding: Vec2;
+        spacing: Vec2;
         columns?: number;
         maxWidth: number;
     }
     return {
         ui(opt: UiElementCompOpt): UiElementComp {
             const _type: UiType = opt.type || "button";
+            if (_type === "radiobutton" && !opt.group) {
+                throw new Error("Radiobuttons need a group");
+            }
             const _group = opt.group || null
             return {
                 id: "ui",
@@ -67,7 +78,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                             }
                             else if (_type === "radiobutton") {
                                 if (!this.isChecked()) {
-                                    k.get(["radio", _group], { recursive: true }).forEach((radio: GameObj) => {
+                                    k.get(["radio", _group!], { recursive: true }).forEach((radio: GameObj) => {
                                         if (radio !== this) {
                                             radio.setChecked(false)
                                         }
@@ -181,7 +192,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                 column = 0
                                 this.children.forEach((child: GameObj) => {
                                     child.pos.x = x
-                                    x += columnWidth[column] + _spacing
+                                    x += columnWidth[column] + _spacing.x
                                     column++
                                     if (column === _columns) {
                                         x = _spacing.x
@@ -223,18 +234,18 @@ export default function kaplayUi(k: KAPLAYCtx) {
                     _type = type
                     this.doLayout()
                 },
-                get padding(): number {
+                get padding(): Vec2 {
                     return _padding
                 },
-                set padding(padding: number) {
-                    _padding = padding
+                set padding(padding: Vec2 | number) {
+                    _padding = k.vec2(padding)
                     this.doLayout()
                 },
-                get spacing(): number {
+                get spacing(): Vec2 {
                     return _spacing
                 },
-                set spacing(spacing: number) {
-                    _spacing = spacing
+                set spacing(spacing: Vec2 | number) {
+                    _spacing = k.vec2(spacing)
                     this.doLayout()
                 },
                 get columns(): number | undefined {
@@ -242,6 +253,13 @@ export default function kaplayUi(k: KAPLAYCtx) {
                 },
                 set columns(columns: number) {
                     _columns = columns
+                    this.doLayout()
+                },
+                get maxWidth(): number {
+                    return _maxWidth
+                },
+                set maxWidth(maxWidth: number) {
+                    _maxWidth = maxWidth
                     this.doLayout()
                 }
             }
