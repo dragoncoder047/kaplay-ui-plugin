@@ -49,6 +49,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                     this.use(_type)
                     this.use("canfocus")
                     switch (_type) {
+                        // @ts-ignore
                         case "radiobutton":
                             if (_group) {
                                 this.use(_group)
@@ -237,14 +238,14 @@ export default function kaplayUi(k: KAPLAYCtx) {
                 get padding(): Vec2 {
                     return _padding
                 },
-                set padding(padding: Vec2 | number) {
+                set padding(padding: Vec2) {
                     _padding = k.vec2(padding)
                     this.doLayout()
                 },
                 get spacing(): Vec2 {
                     return _spacing
                 },
-                set spacing(spacing: Vec2 | number) {
+                set spacing(spacing: Vec2) {
                     _spacing = k.vec2(spacing)
                     this.doLayout()
                 },
