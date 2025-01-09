@@ -123,7 +123,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                             }
                             else if (_type === "radiobutton") {
                                 if (!this.isChecked()) {
-                                    k.get(["radio", _group!], { recursive: true }).forEach((radio: GameObj) => {
+                                    k.get(["radiobutton", _group!], { recursive: true }).forEach((radio: GameObj) => {
                                         if (radio !== this) {
                                             radio.setChecked(false)
                                         }
