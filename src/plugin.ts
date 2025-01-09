@@ -36,6 +36,49 @@ interface LayoutElementComp extends Comp {
 }
 
 export default function kaplayUi(k: KAPLAYCtx) {
+
+    function getFocus(): GameObj | undefined {
+        let focus
+        k.get("focus", { recursive: true }).forEach(uiElement => {
+            focus = uiElement
+        })
+        return focus
+    }
+
+    k.onKeyPress("enter", () => {
+        const focus = getFocus()
+        if (focus) {
+            focus.tag("pressed")
+            focus.trigger("pressed")
+        }
+    });
+
+    k.onKeyRelease("enter", () => {
+        const focus = getFocus()
+        if (focus /*&& focus.is("pressed")*/) { // TODO: why isn't it pressed?
+            focus.tag("pressed")
+            if (focus.is("button")) {
+                focus.trigger("action")
+            }
+            focus.trigger("released")
+        }
+    });
+
+    k.onKeyPress("tab", () => {
+        const focus = getFocus()
+        const uiElements = k.get("canfocus", { recursive: true })
+        if (focus) {
+            const index = uiElements.indexOf(focus)
+            const direction = k.isKeyPressed("shift") ? -1 : 1
+            if (index >= 0) {
+                let nextFocus = uiElements[(index + direction) % uiElements.length]
+                nextFocus.setFocus()
+                return
+            }
+        }
+        uiElements[0].setFocus()
+    })
+
     return {
         ui(opt: UiElementCompOpt): UiElementComp {
             const _type: UiType = opt.type || "button";
