@@ -1,40 +1,41 @@
 import { KAPLAYCtx, Comp, GameObj, Vec2, KEventController } from "kaplay";
 
+type UiType = "button" | "radiobutton" | "checkbox";
+type UiElementCompOpt = {
+    type?: UiType;
+    group?: string;
+    checked?: boolean;
+};
+interface UiElementComp extends Comp {
+    onPressed(action: any): KEventController;
+    onReleased(action: any): KEventController;
+    onChecked(action: any): KEventController;
+    onFocus(action: any): KEventController;
+    onBlur(action: any): KEventController;
+    onAction(action: any): KEventController;
+    isPressed(): boolean;
+    isChecked(): boolean;
+    setChecked(checked: boolean): void;
+    setFocus(): void;
+}
+type LayoutType = "row" | "column" | "grid" | "flex";
+type LayoutElementCompOpt = {
+    type?: LayoutType;
+    padding?: number;
+    spacing?: number;
+    columns?: number;
+    maxWidth?: number;
+};
+interface LayoutElementComp extends Comp {
+    doLayout(): void;
+    type: LayoutType;
+    padding: Vec2;
+    spacing: Vec2;
+    columns?: number;
+    maxWidth: number;
+}
+
 export default function kaplayUi(k: KAPLAYCtx) {
-    type UiType = "button" | "radiobutton" | "checkbox";
-    type UiElementCompOpt = {
-        type?: UiType;
-        group?: string;
-        checked?: boolean;
-    };
-    interface UiElementComp extends Comp {
-        onPressed(action: any): KEventController;
-        onReleased(action: any): KEventController;
-        onChecked(action: any): KEventController;
-        onFocus(action: any): KEventController;
-        onBlur(action: any): KEventController;
-        onAction(action: any): KEventController;
-        isPressed(): boolean;
-        isChecked(): boolean;
-        setChecked(checked: boolean): void;
-        setFocus(): void;
-    }
-    type LayoutType = "row" | "column" | "grid" | "flex";
-    type LayoutElementCompOpt = {
-        type?: LayoutType;
-        padding?: number;
-        spacing?: number;
-        columns?: number;
-        maxWidth?: number;
-    };
-    interface LayoutElementComp extends Comp {
-        doLayout(): void;
-        type: LayoutType;
-        padding: Vec2;
-        spacing: Vec2;
-        columns?: number;
-        maxWidth: number;
-    }
     return {
         ui(opt: UiElementCompOpt): UiElementComp {
             const _type: UiType = opt.type || "button";
