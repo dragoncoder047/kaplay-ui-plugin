@@ -1,8 +1,8 @@
 import kaplay from "kaplay";
-import myPlugin from "../src/plugin";
+import uiPlugin from "../src/plugin";
 
 const k = kaplay({
-    plugins: [myPlugin],
+    plugins: [uiPlugin],
 });
 
-k.hi();
+k.ui({});

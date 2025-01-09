@@ -1,8 +1,8 @@
 {
-  "name": "kaplay-hi-plugin-ts",
+  "name": "kaplay-ui-plugin-ts",
   "version": "1.0.4",
   "type": "module",
-  "description": "My super KAPLAY plugin!",
+  "description": "KAPLAY UI plugin",
   "main": "./dist/plugin.umd.cjs",
   "module": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
