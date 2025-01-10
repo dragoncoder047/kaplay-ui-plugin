@@ -1,22 +1,26 @@
 import { KAPLAYCtx, Comp, GameObj, Vec2, KEventController } from "kaplay";
 
-type UiType = "button" | "radiobutton" | "checkbox";
+type UiType = "custom" | "button" | "radio" | "checkbox" | "sliderthumb" | "dragitem";
 type UiElementCompOpt = {
     type?: UiType;
     group?: string;
     checked?: boolean;
+    proxy?: GameObj;
 };
 interface UiElementComp extends Comp {
-    onPressed(action: any): KEventController;
-    onReleased(action: any): KEventController;
-    onChecked(action: any): KEventController;
-    onFocus(action: any): KEventController;
-    onBlur(action: any): KEventController;
-    onAction(action: any): KEventController;
+    onPressed(action: () => void): KEventController;
+    onReleased(action: () => void): KEventController;
+    onChecked(action: (checked: boolean) => void): KEventController;
+    onFocus(action: () => void): KEventController;
+    onBlur(action: () => void): KEventController;
+    onAction(action: () => void): KEventController;
+    onValueChanged(action: (value: number) => void): KEventController;
     isPressed(): boolean;
     isChecked(): boolean;
     setChecked(checked: boolean): void;
     setFocus(): void;
+    value: number;
+    type: UiType;
 }
 type LayoutType = "row" | "column" | "grid" | "flex";
 type LayoutElementCompOpt = {
@@ -27,7 +31,7 @@ type LayoutElementCompOpt = {
     maxWidth?: number;
 };
 interface LayoutElementComp extends Comp {
-    doLayout(): void;
+    doLayout(): Vec2;
     type: LayoutType;
     padding: Vec2;
     spacing: Vec2;
@@ -56,7 +60,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
     k.onKeyRelease("enter", () => {
         const focus = getFocus()
         if (focus /*&& focus.is("pressed")*/) { // TODO: why isn't it pressed?
-            focus.tag("pressed")
+            focus.untag("pressed")
             if (focus.is("button")) {
                 focus.trigger("action")
             }
@@ -79,13 +83,30 @@ export default function kaplayUi(k: KAPLAYCtx) {
         uiElements[0].setFocus()
     })
 
+    k.onKeyRelease("left", () => {
+        const focus = getFocus()
+        if (focus && focus.type === "sliderthumb") {
+            focus.value = Math.max(focus.value - 0.1, 0)
+            focus.trigger("valueChanged", focus.value)
+        }
+    });
+
+    k.onKeyRelease("right", () => {
+        const focus = getFocus()
+        if (focus && focus.type === "sliderthumb") {
+            focus.value = Math.min(focus.value + 0.1, 1)
+            focus.trigger("valueChanged", focus.value)
+        }
+    });
+
     return {
         ui(opt: UiElementCompOpt): UiElementComp {
-            const _type: UiType = opt.type || "button";
-            if (_type === "radiobutton" && !opt.group) {
+            const _type: UiType = opt.type || "custom";
+            if (_type === "radio" && !opt.group) {
                 throw new Error("Radiobuttons need a group");
             }
             const _group = opt.group || null
+            const _proxy = opt.proxy || null
             return {
                 id: "ui",
                 add(this: GameObj) {
@@ -94,7 +115,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                     this.tag("canfocus")
                     switch (_type) {
                         // @ts-ignore
-                        case "radiobutton":
+                        case "radio":
                             if (_group) {
                                 this.tag(_group)
                             }
@@ -104,82 +125,139 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                 this.setChecked(true)
                             }
                             break;
+                        case "sliderthumb":
+                            break;
                     }
                     this.onClick(() => {
-                        this.tag("pressed")
-                        this.setFocus()
-                        this.trigger("pressed")
+                        this.tag("pressed");
+                        this.setFocus();
+                        this.trigger("pressed");
                     });
                     this.onUpdate(() => {
-                        if (!k.isMouseDown() && this.is("pressed")) {
-                            this.untag("pressed")
-                            if (_type === "button") {
-                                if (this.isHovering()) {
-                                    this.trigger("action")
+                        if (this.is("pressed")) {
+                            if (!k.isMouseDown()) {
+                                this.untag("pressed");
+                                if (_type === "button") {
+                                    if (this.isHovering()) {
+                                        this.trigger("action");
+                                    }
+                                }
+                                else if (_type === "checkbox") {
+                                    this.setChecked(!this.isChecked());
+                                }
+                                else if (_type === "radio") {
+                                    if (!this.isChecked()) {
+                                        k.get(["radio", _group!], { recursive: true }).forEach((radio: GameObj) => {
+                                            if (radio !== this) {
+                                                radio.setChecked(false);
+                                            }
+                                        })
+                                        this.setChecked(true);
+                                    }
+                                }
+                                this.trigger("released");
+                            }
+                            else {
+                                if (_type === "sliderthumb") {
+                                    const leftLimit = 2;
+                                    const rightLimit = this.parent?.width - this.width - 2;
+                                    let pos = k.mousePos();
+                                    let dpos = k.mouseDeltaPos();
+                                    let ppos = pos.sub(dpos);
+                                    const inv = this.parent?.transform.invert();
+                                    pos = inv!.multVec2(pos);
+                                    ppos = inv!.multVec2(ppos);
+                                    const npos = this.pos.add(pos).sub(ppos);
+                                    this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
+                                    this.trigger("valueChanged", this.value);
+                                }
+                                else if (_type === "dragitem") {
+                                    const item = _proxy || this
+                                    let pos = k.mousePos();
+                                    let dpos = k.mouseDeltaPos();
+                                    let ppos = pos.sub(dpos);
+                                    const inv = item.parent?.transform.invert();
+                                    pos = inv!.multVec2(pos);
+                                    ppos = inv!.multVec2(ppos);
+                                    item.pos = item.pos.add(pos).sub(ppos);
                                 }
                             }
-                            else if (_type === "checkbox") {
-                                this.setChecked(!this.isChecked())
-                            }
-                            else if (_type === "radiobutton") {
-                                if (!this.isChecked()) {
-                                    k.get(["radiobutton", _group!], { recursive: true }).forEach((radio: GameObj) => {
-                                        if (radio !== this) {
-                                            radio.setChecked(false)
-                                        }
-                                    })
-                                    this.setChecked(true)
-                                }
-                            }
-                            this.trigger("released")
                         }
                     })
                 },
                 onPressed(this: GameObj, action: any) {
-                    return this.on("pressed", action)
+                    return this.on("pressed", action);
                 },
                 onReleased(this: GameObj, action: any) {
-                    return this.on("released", action)
+                    return this.on("released", action);
                 },
                 onChecked(this: GameObj, action: any) {
                     return this.on("checked", () => {
-                        action(this.isChecked())
+                        action(this.isChecked());
                     })
                 },
                 onFocus(this: GameObj, action: any) {
-                    return this.on("focus", action)
+                    return this.on("focus", action);
                 },
                 onBlur(this: GameObj, action: any) {
-                    return this.on("blur", action)
+                    return this.on("blur", action);
                 },
                 onAction(this: GameObj, action: any) {
-                    return this.on("action", action)
+                    return this.on("action", action);
+                },
+                onValueChanged(this: GameObj, action: any) {
+                    return this.on("valueChanged", action);
                 },
                 isPressed(this: GameObj) {
-                    return this.is("pressed")
+                    return this.is("pressed");
                 },
                 isChecked(this: GameObj) {
-                    return this.is("checked")
+                    return this.is("checked");
                 },
                 setChecked(this: GameObj, checked: boolean) {
                     if (checked) {
-                        this.tag("checked")
+                        this.tag("checked");
                     }
                     else {
-                        this.untag("checked")
+                        this.untag("checked");
                     }
-                    this.trigger("checked", checked)
+                    this.trigger("checked", checked);
                 },
                 setFocus(this: GameObj) {
                     k.get("focus", { recursive: true }).forEach((uiElement: GameObj) => {
                         if (uiElement !== this) {
-                            uiElement.untag("focus")
-                            uiElement.trigger("blur")
+                            uiElement.untag("focus");
+                            uiElement.trigger("blur");
                         }
                     })
-                    this.tag("focus")
-                    this.trigger("focus")
-                }
+                    this.tag("focus");
+                    this.trigger("focus");
+                },
+                get value() {
+                    const uiElement: GameObj = this as unknown as GameObj
+                    switch (_type) {
+                        case "checkbox":
+                        case "radio":
+                            return this.isChecked() ? 1 : 0;
+                        case "sliderthumb":
+                            return (uiElement.pos.x - 2) / (uiElement.parent!.width - uiElement.width - 4);
+                    }
+                    return 0
+                },
+                set value(value: number) {
+                    const uiElement: GameObj = this as unknown as GameObj
+                    switch (_type) {
+                        case "checkbox":
+                        case "radio":
+                            this.setChecked(value != 0);
+                            break;
+                        case "sliderthumb":
+                            uiElement.pos.x = value * (uiElement.parent!.width - uiElement.width - 4) + 2;
+                    }
+                },
+                get type() {
+                    return _type
+                },
             }
         },
         layout(opt: LayoutElementCompOpt): LayoutElementComp {
@@ -199,20 +277,24 @@ export default function kaplayUi(k: KAPLAYCtx) {
                         case "row":
                             {
                                 let pos = _padding
+                                let height = 0
                                 this.children.forEach((child: GameObj) => {
                                     child.pos = pos
                                     pos = pos.add(child.width + _spacing.x, 0)
+                                    height = Math.max(height, child.height)
                                 })
-                                break
+                                return k.vec2(pos.x - _spacing.x + _padding.x, height + _padding.y * 2)
                             }
                         case "column":
                             {
                                 let pos = _padding
+                                let width = 0
                                 this.children.forEach((child: GameObj) => {
                                     child.pos = pos
                                     pos = pos.add(0, child.height + _spacing.y)
+                                    width = Math.max(width, child.width)
                                 })
-                                break
+                                return k.vec2(width + _padding.x * 2, pos.y - _spacing.y + _padding.y)
                             }
                         case "grid":
                             {
@@ -244,12 +326,13 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                         column = 0
                                     }
                                 })
-                                break
+                                return k.vec2(_padding.x * 2 + _spacing.x * columnWidth.length - 1 + columnWidth.reduce((sum, w) => sum + w, 0), pos.y + _padding.y)
                             }
                         case "flex":
                             {
                                 let pos = k.vec2(_padding)
                                 let column = 0
+                                let width = 0
                                 let maxHeight = 0
                                 this.children.forEach((child: GameObj) => {
                                     child.pos = k.vec2(pos)
@@ -266,9 +349,10 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                         // Just append to the right since we need at least one item per row
                                         maxHeight = Math.max(maxHeight, child.height)
                                         pos.x += child.width + _spacing.x
+                                        width = Math.max(width, pos.x)
                                     }
                                 })
-                                break
+                                return k.vec2(width, pos.y + _padding.y + maxHeight)
                             }
                     }
                 },
