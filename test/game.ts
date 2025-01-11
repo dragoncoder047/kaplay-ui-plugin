@@ -1,5 +1,6 @@
 import kaplay from "kaplay";
 import uiPlugin from "../src/plugin";
+import { debug } from "console";
 
 const k = kaplay({
     plugins: [uiPlugin],
@@ -180,20 +181,33 @@ k.onLoad(() => {
      * @returns The newly attached slider
      */
     function newSlider(parent, { position = k.vec2(), label = "", group = "", width = 0 } = {}) {
+        const dimensions = k.formatText({ text: label, size: 20 })
         const slider = parent.add([
-            k.rect(100, 20),
+            k.rect(100, 20 + dimensions.height),
             k.pos(position),
             k.area(),
             k.color(k.WHITE),
             k.outline(1, k.WHITE),
         ])
+        let y = 0
+        if (label && label != "") {
+            slider.add([
+                k.text(label, {
+                    size: 20
+                }),
+                k.pos(0, 10),
+                k.anchor("left"),
+                k.color(k.BLACK)
+            ])
+            y += dimensions.height;
+        }
         const rail = slider.add([
             k.sprite("buttonpressed", { width: slider.width - 8, height: 4 }),
-            k.pos(4, 8),
+            k.pos(4, y + 8),
         ]);
         const thumb = slider.add([
             k.sprite("button", { width: 10, height: 20 - 4 }),
-            k.pos(2, 2),
+            k.pos(2, y + 2),
             k.area(),
             k.ui({ type: "sliderthumb" })
         ])
@@ -206,9 +220,146 @@ k.onLoad(() => {
         return slider
     }
 
-    const slider = newSlider(panel, { position: k.vec2(80, 260) })
+    const slider = newSlider(panel, { position: k.vec2(80, 260), label: "Red" })
+    slider.thumb.value = 1;
 
-    slider.thumb.onValueChanged(value => k.debug.log(`Slider set to ${value}`))
+    slider.thumb.onValueChanged(value => {
+        k.debug.log(`Slider set to ${value}`)
+        panel.color = k.rgb(value * 255, 255, 255)
+    })
+
+    /**
+     * Create a dropdown
+     * @param parent Parent to attach the dropdown to
+     * @param opt Options 
+     * @returns The newly attached dropdown
+     */
+    function newGroupBox(parent, { position = k.vec2(), label = "", group = "", width = 0 } = {}) {
+        const dimensions = k.formatText({ text: "  " + label, size: 20 })
+        let collapsed = false;
+        const box = parent.add([
+            k.rect(dimensions.width, dimensions.height),
+            k.pos(position),
+            k.area(),
+            k.color(k.WHITE),
+            k.outline(1, k.WHITE),
+        ]);
+        const collapse = box.add([
+            k.text((collapsed ? "► " : "▼ ") + label, {
+                size: 20
+            }),
+            k.pos(0, 10),
+            k.anchor("left"),
+            k.color(k.BLACK),
+            k.area(),
+            k.ui({ type: "checkbox" })
+        ]);
+        collapse.onChecked((checked) => {
+            collapsed = checked;
+            collapse.text = (collapsed ? "► " : "▼ ") + label;
+        });
+
+        return box;
+    }
+
+    newGroupBox(panel, { label: "Crew settings" });
+
+    /**
+     * Create a dropdown
+     * @param parent Parent to attach the dropdown to
+     * @param opt Options 
+     * @returns The newly attached dropdown
+     */
+    function newDropdown(parent, { position = k.vec2(), label = "", group = "", width = 0, options = [""], selected = "" } = {}) {
+        const dimensions = k.formatText({ text: label, size: 20 })
+        const dropdown = parent.add([
+            k.rect(100, 24 + dimensions.height),
+            k.pos(position),
+            k.area(),
+            k.color(k.WHITE),
+            k.outline(1, k.WHITE),
+        ])
+        let y = 0
+        if (label && label != "") {
+            dropdown.add([
+                k.text(label, {
+                    size: 20
+                }),
+                k.pos(0, 10),
+                k.anchor("left"),
+                k.color(k.BLACK)
+            ])
+            y += dimensions.height;
+        }
+        const button = dropdown.add([
+            k.sprite("button", { width: dropdown.width, height: 24 }),
+            k.pos(0, y + 2),
+            k.area(),
+            k.ui({ type: "button" })
+        ])
+        const selectedText = button.add([
+            k.text(selected, {
+                size: 20
+            }),
+            k.pos(4, 12),
+            k.anchor("left"),
+            k.color(k.BLACK)
+        ])
+        button.add([
+            k.text("▼", {
+                size: 20
+            }),
+            k.pos(button.width - 4, 10),
+            k.anchor("right"),
+            k.color(k.BLACK)
+        ])
+
+        button.onAction(() => {
+            const menu = button.add([
+                k.pos(0, 24),
+                k.rect(200, 200),
+                k.color(k.WHITE),
+                k.outline(1, k.BLACK),
+                k.area(),
+                k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
+            ]);
+            for (const option of options) {
+                const dimensions = k.formatText({ text: label, size: 20 })
+                const menuItem = menu.add([
+                    k.rect(menu.width - 8, dimensions.height),
+                    k.pos(0, 0),
+                    k.area(),
+                    k.color(k.WHITE),
+                    k.ui({ type: "button" })
+                ]);
+                menuItem.add([
+                    k.text(option, {
+                        size: 20
+                    }),
+                    k.pos(4, 12),
+                    k.anchor("left"),
+                    k.color(k.BLACK)
+                ])
+                menuItem.onHover(() => { menuItem.color = k.rgb(80, 80, 255); });
+                menuItem.onHoverEnd(() => { menuItem.color = k.WHITE; });
+                menuItem.onAction(() => {
+                    selectedText.text = option;
+                    menu.destroy();
+                });
+            }
+            const size = menu.doLayout();
+            [menu.width, menu.height] = [size.x, size.y]
+            menu.onMouseDown(() => {
+                if (!menu.isHovering()) {
+                    menu.destroy();
+                }
+            })
+        })
+
+        return dropdown;
+    }
+
+    newDropdown(panel, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
 
     resizeWindow(panel.doLayout());
 });

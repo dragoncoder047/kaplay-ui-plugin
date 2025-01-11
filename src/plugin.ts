@@ -301,17 +301,18 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                 // Fix vertical position, collect column width for second pass
                                 let pos = k.vec2(_padding)
                                 let column = 0
-                                let maxHeight = 0
+                                let row = 0
                                 let columnWidth: number[] = []
+                                let rowHeight: number[] = []
                                 this.children.forEach((child: GameObj) => {
                                     child.pos = k.vec2(pos)
-                                    maxHeight = Math.max(maxHeight, child.height)
                                     columnWidth[column] = Math.max(columnWidth[column] || 0, child.width)
+                                    rowHeight[row] = Math.max(rowHeight[row] || 0, child.height)
                                     column++
                                     if (column === _columns) {
-                                        pos.y += maxHeight + _spacing.y
-                                        column = 0
-                                        maxHeight = 0
+                                        pos.y += rowHeight[row] + _spacing.y;
+                                        column = 0;
+                                        row++;
                                     }
                                 })
                                 // Fix horizontal position
@@ -326,7 +327,9 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                         column = 0
                                     }
                                 })
-                                return k.vec2(_padding.x * 2 + _spacing.x * columnWidth.length - 1 + columnWidth.reduce((sum, w) => sum + w, 0), pos.y + _padding.y)
+                                return k.vec2(
+                                    _padding.x * 2 + _spacing.x * (columnWidth.length - 1) + columnWidth.reduce((sum, w) => sum + w, 0),
+                                    _padding.y * 2 + _spacing.y * (rowHeight.length - 1) + rowHeight.reduce((sum, h) => sum + h, 0))
                             }
                         case "flex":
                             {
