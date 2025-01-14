@@ -73,7 +73,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
         const uiElements = k.get("canfocus", { recursive: true })
         if (focus) {
             const index = uiElements.indexOf(focus)
-            const direction = k.isKeyPressed("shift") ? -1 : 1
+            const direction = k.isKeyDown("shift") ? -1 : 1
             if (index >= 0) {
                 let nextFocus = uiElements[(index + direction) % uiElements.length]
                 nextFocus.setFocus()
@@ -86,7 +86,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
     k.onKeyRelease("left", () => {
         const focus = getFocus()
         if (focus && focus.type === "sliderthumb") {
-            focus.value = Math.max(focus.value - 0.1, 0)
+            focus.value = Math.max(focus.value - (k.isKeyDown("shift") ? 0.01 : 0.1), 0)
             focus.trigger("valueChanged", focus.value)
         }
     });
@@ -94,7 +94,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
     k.onKeyRelease("right", () => {
         const focus = getFocus()
         if (focus && focus.type === "sliderthumb") {
-            focus.value = Math.min(focus.value + 0.1, 1)
+            focus.value = Math.min(focus.value + (k.isKeyDown("shift") ? 0.01 : 0.1), 1)
             focus.trigger("valueChanged", focus.value)
         }
     });
