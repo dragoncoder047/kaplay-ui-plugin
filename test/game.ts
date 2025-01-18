@@ -52,10 +52,10 @@ k.onLoad(() => {
      * @param opt Options 
      * @returns The newly attached button
      */
-    function newButton(parent, { position = k.vec2(), label = "", sprite = "", frame = 0 } = {}) {
+    function newButton(parent, { position = k.vec2(), label = "", sprite = "", frame = 0, layout = { padding: [3, 2] } } = {}) {
         const dimensions = k.formatText({ text: label, size: 20 })
-        let width = dimensions.width + 16 + 6
-        let height = dimensions.height + 4
+        let width = dimensions.width + 16 + layout.padding[0] * 2
+        let height = dimensions.height + layout.padding[1] * 2
         const button = parent.add([
             k.rect(width, height),
             k.pos(position),
@@ -72,7 +72,7 @@ k.onLoad(() => {
         let icon;
         if (sprite) {
             icon = button.add([
-                k.pos(0, 2 + dimensions.height),
+                k.pos(0, layout.padding[1] + dimensions.height),
                 k.sprite(sprite, { frame: frame }),
                 k.anchor("top")
             ])
@@ -85,7 +85,7 @@ k.onLoad(() => {
             k.text(label, {
                 size: 20
             }),
-            k.pos(width / 2, 12 + (icon ? icon.height : 0)),
+            k.pos(width / 2, (dimensions.height + layout.padding[1] * 2) / 2 + 1 + (icon ? icon.height : 0)),
             k.anchor("center"),
             k.color(k.BLACK)
         ])
@@ -383,51 +383,72 @@ k.onLoad(() => {
 
         // TODO: Fix draw order, since the menu needs to be drawn on top of everything else
         button.onAction(() => {
-            const menu = button.add([
-                k.pos(0, 24),
-                k.rect(200, 200),
-                k.color(k.WHITE),
-                k.outline(1, k.BLACK),
-                k.area(),
-                k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
-            ]);
-            for (const option of options) {
-                const dimensions = k.formatText({ text: label, size: 20 })
-                const menuItem = menu.add([
-                    k.rect(menu.width - 8, dimensions.height),
-                    k.pos(0, 0),
-                    k.area(),
-                    k.color(k.WHITE),
-                    k.ui({ type: "button" })
-                ]);
-                menuItem.add([
-                    k.text(option, {
-                        size: 20
-                    }),
-                    k.pos(4, 12),
-                    k.anchor("left"),
-                    k.color(k.BLACK)
-                ])
-                menuItem.onHover(() => { menuItem.color = k.rgb(80, 80, 255); });
-                menuItem.onHoverEnd(() => { menuItem.color = k.WHITE; });
-                menuItem.onAction(() => {
-                    selectedText.text = option;
-                    menu.destroy();
-                });
-            }
-            const size = menu.doLayout();
-            [menu.width, menu.height] = [size.x, size.y]
-            menu.onMouseDown(() => {
-                if (!menu.isHovering()) {
-                    menu.destroy();
-                }
-            })
+            const menu = newMenu(button, { position: k.vec2(0, 24), items: options })
         })
 
         return dropdown;
     }
 
     newDropdown(panel, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
+
+    type MenuHideOption = "destroy" | "hide"
+    function newMenu(parent, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
+        const menu = parent.add([
+            k.pos(position),
+            k.rect(200, 200),
+            k.color(k.WHITE),
+            k.outline(1, k.BLACK),
+            k.area(),
+            k.layout({ type: "column", padding: 5, spacing: 5 }),
+            {
+                onValueChanged(cb) {
+                    this.on("valueChanged", cb)
+                },
+                hide() {
+                    switch (hideOption) {
+                        case "destroy":
+                            this.destroy();
+                            break;
+                        case "hide":
+                            this.visible = false;
+                            break;
+                    }
+                }
+            }
+        ]);
+        for (const item of items) {
+            const dimensions = k.formatText({ text: item, size: 20 })
+            const menuItem = menu.add([
+                k.rect(menu.width - 8, dimensions.height),
+                k.pos(0, 0),
+                k.area(),
+                k.color(k.WHITE),
+                k.ui({ type: "button" })
+            ]);
+            menuItem.add([
+                k.text(item, {
+                    size: 20
+                }),
+                k.pos(4, 12),
+                k.anchor("left"),
+                k.color(k.BLACK)
+            ])
+            menuItem.onHover(() => { menuItem.color = k.rgb(80, 80, 255); });
+            menuItem.onHoverEnd(() => { menuItem.color = k.WHITE; });
+            menuItem.onAction(() => {
+                menu.trigger("valueChanged", item);
+                menu.hide()
+            });
+        }
+        const size = menu.doLayout();
+        [menu.width, menu.height] = [size.x, size.y]
+        menu.onMouseDown(() => {
+            if (!menu.isHovering()) {
+                menu.hide();
+            }
+        })
+        return menu;
+    }
 
     resizeWindow(window, titlebar, panel, panel.doLayout());
 
