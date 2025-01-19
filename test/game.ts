@@ -384,6 +384,7 @@ k.onLoad(() => {
         // TODO: Fix draw order, since the menu needs to be drawn on top of everything else
         button.onAction(() => {
             const menu = newMenu(button, { position: k.vec2(0, 24), items: options })
+            menu.onValueChanged(value => { selectedText.text = value; });
         })
 
         return dropdown;
