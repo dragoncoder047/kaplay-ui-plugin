@@ -22,8 +22,8 @@ interface UiElementComp extends Comp {
     value: number;
     type: UiType;
 }
-type LayoutType = "row" | "column" | "grid" | "flex";
-type LayoutElementCompOpt = {
+export type LayoutType = "row" | "column" | "grid" | "flex";
+export type LayoutElementCompOpt = {
     type?: LayoutType;
     padding?: number;
     spacing?: number;

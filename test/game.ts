@@ -1,5 +1,5 @@
 import kaplay, { GfxCtx, ImageSource, Texture, TextureOpt } from "kaplay";
-import uiPlugin from "../src/plugin";
+import uiPlugin, { LayoutType } from "../src/plugin";
 import { debug } from "console";
 
 const k = kaplay({
@@ -33,11 +33,6 @@ k.onLoad(() => {
         k.color(k.WHITE),
         k.opacity(1.0),
         k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
-    ])
-
-    panel.add([
-        k.pos(0, 0),
-        k.sprite("bean")
     ])
 
     function resizeWindow(window, titlebar, panel, size) {
@@ -300,7 +295,7 @@ k.onLoad(() => {
      * @param opt Options 
      * @returns The newly attached dropdown
      */
-    function newGroupBox(parent, { position = k.vec2(), label = "", group = "", width = 0 } = {}) {
+    function newGroupBox(parent, { position = k.vec2(), label = "", layout = "column" } = {}) {
         const dimensions = k.formatText({ text: "  " + label, size: 20 })
         let collapsed = false;
         const box = parent.add([
@@ -320,16 +315,53 @@ k.onLoad(() => {
             k.area(),
             k.ui({ type: "checkbox" })
         ]);
+        const content = box.add([
+            k.pos(0, 20),
+            k.rect(1, 1),
+            k.area(),
+            k.layout({ type: layout as LayoutType }) // TODO: pass from options
+        ]);
         collapse.onChecked((checked) => {
             collapsed = checked;
             collapse.text = (collapsed ? "► " : "▼ ") + label;
-            // TODO: show/hide content and adjust size
+            if (collapsed) {
+                content.hidden = true;
+                box.width = Math.max(dimensions.width, content.width);
+                box.height = dimensions.height;
+            }
+            else {
+                content.hidden = false;
+                const size = content.doLayout();
+                [content.width, content.height] = [size.x, size.y]
+                box.width = Math.max(dimensions.width, content.width);
+                box.height = dimensions.height + content.height;
+            }
         });
+        k.onAdd(obj => {
+            if (content.isAncestorOf(obj)) {
+                const size = content.doLayout();
+                [content.width, content.height] = [size.x, size.y]
+                box.width = Math.max(dimensions.width, content.width);
+                box.height = collapsed ? dimensions.height : dimensions.height + content.height;
+            }
+        })
+
+        box.use({
+            id: "groupBox",
+            get content() {
+                return content;
+            },
+            onCollapseChanged(cb) {
+                collapse.onChecked((checked) => {
+                    cb(checked)
+                });
+            },
+        })
 
         return box;
     }
 
-    newGroupBox(panel, { label: "Crew settings" });
+    const box = newGroupBox(panel, { label: "Crew settings" });
 
     /**
      * Create a dropdown
@@ -390,7 +422,11 @@ k.onLoad(() => {
         return dropdown;
     }
 
-    newDropdown(panel, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
+    box.content.add([
+        k.pos(0, 0),
+        k.sprite("bean")
+    ])
+    newDropdown(box.content, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
 
     type MenuHideOption = "destroy" | "hide"
     function newMenu(parent, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
@@ -452,6 +488,11 @@ k.onLoad(() => {
     }
 
     resizeWindow(window, titlebar, panel, panel.doLayout());
+
+    box.onCollapseChanged(collapsed => {
+        k.debug.log(collapsed)
+        resizeWindow(window, titlebar, panel, panel.doLayout());
+    });
 
     const window2 = k.add([
         k.pos(400, 100),
