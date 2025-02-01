@@ -347,6 +347,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                         pos.y += maxHeight + _spacing.y
                                         column = 1
                                         maxHeight = child.height
+                                        width = Math.max(width, pos.x)
                                     }
                                     else {
                                         // Just append to the right since we need at least one item per row

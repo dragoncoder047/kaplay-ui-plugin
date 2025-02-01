@@ -1,6 +1,5 @@
 import kaplay, { GfxCtx, ImageSource, Texture, TextureOpt } from "kaplay";
 import uiPlugin, { LayoutType } from "../src/plugin";
-import { debug } from "console";
 
 const k = kaplay({
     plugins: [uiPlugin],
