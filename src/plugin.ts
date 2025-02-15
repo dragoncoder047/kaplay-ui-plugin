@@ -109,6 +109,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
             const _proxy = opt.proxy || null
             return {
                 id: "ui",
+                require: ["area"],
                 add(this: GameObj) {
                     // Initialisation
                     this.tag(_type)

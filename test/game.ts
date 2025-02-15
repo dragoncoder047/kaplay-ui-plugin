@@ -1,4 +1,4 @@
-import kaplay, { GfxCtx, ImageSource, Texture, TextureOpt } from "kaplay";
+import kaplay, { Color, ColorComp, FormattedText, GameObj, GfxCtx, ImageSource, KEventController, TextComp, Texture, TextureOpt } from "kaplay";
 import uiPlugin, { LayoutType } from "../src/plugin";
 
 const k = kaplay({
@@ -12,6 +12,7 @@ k.loadSprite("button", "/sprites/button.png", { slice9: { left: 3, top: 3, right
 k.loadSprite("buttonpressed", "/sprites/buttonpressed.png", { slice9: { left: 3, top: 3, right: 3, bottom: 3 } })
 
 k.onLoad(() => {
+    // region main window
     const window = k.add([
         k.pos(200, 100),
         k.sprite("button", { width: 320, height: 250 }),
@@ -40,6 +41,7 @@ k.onLoad(() => {
         titlebar.width = size.x
     }
 
+    // region button
     /**
      * Create a button
      * @param parent Parent to attach the button to
@@ -100,6 +102,7 @@ k.onLoad(() => {
     const button = newButton(panel, { position: k.vec2(80, 20), label: "Action" })
     button.onAction(() => { k.shake(); })
 
+    // region checkbox
     /**
      * Create a checkbox
      * @param parent Parent to attach the button to
@@ -174,6 +177,7 @@ k.onLoad(() => {
     checkbox.onChecked(checked => { panel.opacity = checked ? 1.0 : 0.0; })
     checkbox.setChecked(true)
 
+    // region radio
     /**
      * Create a radiobutton
      * @param parent Parent to attach the button to
@@ -222,6 +226,7 @@ k.onLoad(() => {
     radio3.onChecked(checked => { if (checked) { panel.type = "grid"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
     radio4.onChecked(checked => { if (checked) { panel.type = "flex"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
 
+    // region slider
     /**
      * Create a slider
      * @param parent Parent to attach the slider to
@@ -288,11 +293,12 @@ k.onLoad(() => {
         panel.color = k.rgb(value * 255, 255, 255)
     })
 
+    // region group box
     /**
-     * Create a dropdown
-     * @param parent Parent to attach the dropdown to
+     * Create a group box
+     * @param parent Parent to attach the group box to
      * @param opt Options 
-     * @returns The newly attached dropdown
+     * @returns The newly attached group box
      */
     function newGroupBox(parent, { position = k.vec2(), label = "", layout = "column" } = {}) {
         const dimensions = k.formatText({ text: "  " + label, size: 20 })
@@ -362,6 +368,7 @@ k.onLoad(() => {
 
     const box = newGroupBox(panel, { label: "Crew settings" });
 
+    // region dropdown
     /**
      * Create a dropdown
      * @param parent Parent to attach the dropdown to
@@ -427,6 +434,7 @@ k.onLoad(() => {
     ])
     newDropdown(box.content, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
 
+    // region menu
     type MenuHideOption = "destroy" | "hide"
     function newMenu(parent, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
         const menu = parent.add([
@@ -486,6 +494,129 @@ k.onLoad(() => {
         return menu;
     }
 
+    interface Edit {
+        text: string;
+        color: Color;
+        cursor: number;
+        selection?: string;
+        select(start: number, length: number): string;
+    }
+
+    interface EditChangeDelegate {
+        canFocus(): boolean;
+        editBegin(): void;
+        canChange(edit: Edit, start: number, length: number, replacement: string): boolean;
+        editEnd(): void;
+    }
+
+    // region edit
+    /**
+     * Create an edit control
+     * @param parent Parent to attach the edit control to
+     * @param opt Options 
+     * @returns The newly attached edit control
+     */
+    function newEdit(parent, { position = k.vec2(), label = "", width = 0, value = "", size = 20, font = undefined, changeDelegate = undefined } = {}) {
+        let selectionStart: number = value.length;
+        let selectionLength: number = 0;
+        const textDimensions: FormattedText = k.formatText({ text: value, size });
+        let cursor = textDimensions.width;
+        //const dimensions = k.formatText({ text: label, size: 20 })
+        const edit = parent.add([
+            k.rect(width || 100, 24),
+            k.pos(position),
+            k.area(),
+            k.color(k.RED),
+            k.outline(1, k.WHITE),
+            k.ui({ type: "custom" }),
+        ]);
+        const text: GameObj<TextComp | ColorComp> = edit.add([
+            k.pos(2, 12),
+            k.anchor("left"),
+            k.text(value, {
+                size: size,
+                font: font
+            }),
+            k.color(k.BLACK)
+        ]);
+        let charEvent: KEventController | null = null;
+        let drawEvent: KEventController | null = null;
+        let keyEvent: KEventController | null = null;
+        edit.onFocus(() => {
+            edit.outline.color = k.BLUE;
+            if (!charEvent) {
+                charEvent = k.onCharInput(ch => {
+                    var str: string = text.text;
+                    if (selectionStart >= str.length) {
+                        str = str + ch;
+                    }
+                    else if (selectionStart == 0) {
+                        str = ch + str.substring(selectionStart + selectionLength);
+                    }
+                    else {
+                        str = str.substring(0, selectionStart) + ch + str.substring(selectionStart + selectionLength);
+                    }
+                    text.text = str;
+                    selectionStart += ch.length;
+                    selectionLength = 0;
+                    const textDimensions: FormattedText = k.formatText({ text: str, size });
+                    cursor = textDimensions.width;
+                });
+            }
+            if (!drawEvent) {
+                drawEvent = text.onDraw(() => {
+                    k.drawLine({
+                        p1: k.vec2(cursor, -size / 2),
+                        p2: k.vec2(cursor, size / 2),
+                        color: k.BLACK,
+                    })
+                });
+            }
+            if (!keyEvent) {
+                keyEvent = text.onKeyPress("backspace", () => {
+                    let str = text.text
+                    str = str.slice(0, -1);
+                    text.text = str;
+                    selectionStart -= 1;
+                    selectionLength = 0;
+                    const textDimensions: FormattedText = k.formatText({ text: str, size });
+                    cursor = textDimensions.width;
+                });
+            }
+        })
+        edit.onBlur(() => {
+            edit.outline.color = k.WHITE;
+            charEvent?.cancel();
+            charEvent = null;
+            drawEvent?.cancel();
+            drawEvent = null;
+        });
+        return {
+            get text() {
+                return text.text;
+            },
+            set text(value) {
+                text.text = value;
+            },
+            get color() {
+                return text.color;
+            },
+            set color(value) {
+                text.color = value;
+            },
+            get selection(): string {
+                return "";
+            },
+            select(start: number, length: number = 0): string {
+                selectionStart = start;
+                selectionLength = length;
+                return "";
+            }
+        }
+    }
+
+    newEdit(panel, { label: "Name", width: 0, value: "placeholder" });
+
     resizeWindow(window, titlebar, panel, panel.doLayout());
 
     box.onCollapseChanged(collapsed => {
@@ -493,6 +624,7 @@ k.onLoad(() => {
         resizeWindow(window, titlebar, panel, panel.doLayout());
     });
 
+    // region video window
     const window2 = k.add([
         k.pos(400, 100),
         k.sprite("button", { width: 320, height: 250 }),
