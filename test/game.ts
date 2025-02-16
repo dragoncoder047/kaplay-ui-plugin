@@ -540,8 +540,12 @@ k.onLoad(() => {
             k.color(k.BLACK)
         ]);
         function updateCursor() {
-            k.debug.log(selectionStart)
-            cursor = textDimensions.chars[selectionStart].pos.x - textDimensions.chars[selectionStart].width * textDimensions.chars[selectionStart].scale.x / 2;
+            if (selectionStart < textDimensions.chars.length) {
+                cursor = textDimensions.chars[selectionStart].pos.x - textDimensions.chars[selectionStart].width * textDimensions.chars[selectionStart].scale.x / 2;
+            }
+            else {
+                cursor = textDimensions.width;
+            }
         }
         let charEvent: KEventController | null = null;
         let drawEvent: KEventController | null = null;
@@ -577,16 +581,33 @@ k.onLoad(() => {
                 });
             }
             if (!keyEvent) {
-                keyEvent = text.onKeyPress("backspace", () => {
+                keyEvent = text.onKeyPress(key => {
                     let str = text.text
-                    if (selectionLength == 0) {
-                        str = str.slice(0, selectionStart - 1) + str.slice(selectionStart);
+                    switch (key) {
+                        case "backspace":
+                            if (selectionLength == 0) {
+                                str = str.slice(0, selectionStart - 1) + str.slice(selectionStart);
+                            }
+                            text.text = str;
+                            selectionStart -= 1;
+                            selectionLength = 0;
+                            updateCursor();
+                            break;
+                        case "left":
+                            if (selectionStart > 0) {
+                                selectionStart -= 1;
+                                selectionLength = 0;
+                                updateCursor();
+                            }
+                            break;
+                        case "right":
+                            if (selectionStart < str.length) {
+                                selectionStart = Math.min(selectionStart + 1, str.length);
+                                selectionLength = 0;
+                                updateCursor();
+                            }
+                            break;
                     }
-                    text.text = str;
-                    selectionStart -= 1;
-                    selectionLength = 0;
-                    textDimensions = k.formatText({ text: str, size });
-                    updateCursor();
                 });
             }
         });
