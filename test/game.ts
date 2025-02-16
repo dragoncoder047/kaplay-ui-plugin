@@ -521,12 +521,11 @@ k.onLoad(() => {
         let selectionLength: number = 0;
         let textDimensions: FormattedText = k.formatText({ text: value, size });
         let cursor = textDimensions.width;
-        //const dimensions = k.formatText({ text: label, size: 20 })
         const edit = parent.add([
-            k.rect(width || 100, 24),
+            k.rect(width || 150, 24),
             k.pos(position),
             k.area(),
-            k.color(k.RED),
+            k.color(k.WHITE),
             k.outline(1, k.WHITE),
             k.ui({ type: "custom" }),
         ]);
@@ -585,6 +584,9 @@ k.onLoad(() => {
                     let str = text.text
                     switch (key) {
                         case "backspace":
+                            if (selectionStart <= 0) {
+                                return;
+                            }
                             if (selectionLength == 0) {
                                 str = str.slice(0, selectionStart - 1) + str.slice(selectionStart);
                             }
@@ -618,7 +620,7 @@ k.onLoad(() => {
                 let index = 0;
                 let x = 0;
                 while (index < textDimensions.chars.length) {
-                    // The character pos is the middle od the character
+                    // The character pos is already in the middle of the character
                     if (pos.x < textDimensions.chars[index].pos.x) { break; }
                     index++;
                 }
