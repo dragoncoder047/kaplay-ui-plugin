@@ -1,4 +1,4 @@
-import kaplay, { Color, ColorComp, FormattedText, GameObj, GfxCtx, ImageSource, KEventController, TextComp, Texture, TextureOpt } from "kaplay";
+import kaplay, { AreaComp, Color, ColorComp, FixedComp, FormattedText, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt } from "kaplay";
 import uiPlugin, { LayoutType } from "../src/plugin";
 
 const k = kaplay({
@@ -519,7 +519,7 @@ k.onLoad(() => {
     function newEdit(parent, { position = k.vec2(), label = "", width = 0, value = "", size = 20, font = undefined, changeDelegate = undefined } = {}) {
         let selectionStart: number = value.length;
         let selectionLength: number = 0;
-        const textDimensions: FormattedText = k.formatText({ text: value, size });
+        let textDimensions: FormattedText = k.formatText({ text: value, size });
         let cursor = textDimensions.width;
         //const dimensions = k.formatText({ text: label, size: 20 })
         const edit = parent.add([
@@ -530,7 +530,7 @@ k.onLoad(() => {
             k.outline(1, k.WHITE),
             k.ui({ type: "custom" }),
         ]);
-        const text: GameObj<TextComp | ColorComp> = edit.add([
+        const text: GameObj<TextComp | ColorComp | AreaComp | PosComp | FixedComp> = edit.add([
             k.pos(2, 12),
             k.anchor("left"),
             k.text(value, {
@@ -539,6 +539,10 @@ k.onLoad(() => {
             }),
             k.color(k.BLACK)
         ]);
+        function updateCursor() {
+            k.debug.log(selectionStart)
+            cursor = textDimensions.chars[selectionStart].pos.x - textDimensions.chars[selectionStart].width * textDimensions.chars[selectionStart].scale.x / 2;
+        }
         let charEvent: KEventController | null = null;
         let drawEvent: KEventController | null = null;
         let keyEvent: KEventController | null = null;
@@ -559,8 +563,8 @@ k.onLoad(() => {
                     text.text = str;
                     selectionStart += ch.length;
                     selectionLength = 0;
-                    const textDimensions: FormattedText = k.formatText({ text: str, size });
-                    cursor = textDimensions.width;
+                    textDimensions = k.formatText({ text: str, size });
+                    updateCursor();
                 });
             }
             if (!drawEvent) {
@@ -575,15 +579,33 @@ k.onLoad(() => {
             if (!keyEvent) {
                 keyEvent = text.onKeyPress("backspace", () => {
                     let str = text.text
-                    str = str.slice(0, -1);
+                    if (selectionLength == 0) {
+                        str = str.slice(0, selectionStart - 1) + str.slice(selectionStart);
+                    }
                     text.text = str;
                     selectionStart -= 1;
                     selectionLength = 0;
-                    const textDimensions: FormattedText = k.formatText({ text: str, size });
-                    cursor = textDimensions.width;
+                    textDimensions = k.formatText({ text: str, size });
+                    updateCursor();
                 });
             }
-        })
+        });
+        edit.onClick(() => {
+            let pos = k.mousePos();
+            pos = text.fromScreen(pos);
+            if (textDimensions.chars.length > 0) {
+                let index = 0;
+                let x = 0;
+                while (index < textDimensions.chars.length) {
+                    // The character pos is the middle od the character
+                    if (pos.x < textDimensions.chars[index].pos.x) { break; }
+                    index++;
+                }
+                selectionStart = index;
+                selectionLength = 0;
+                updateCursor();
+            }
+        });
         edit.onBlur(() => {
             edit.outline.color = k.WHITE;
             charEvent?.cancel();
