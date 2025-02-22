@@ -12,30 +12,44 @@ k.loadSprite("button", "/sprites/button.png", { slice9: { left: 3, top: 3, right
 k.loadSprite("buttonpressed", "/sprites/buttonpressed.png", { slice9: { left: 3, top: 3, right: 3, bottom: 3 } })
 
 k.onLoad(() => {
-    // region main window
+    // region window
     interface WindowComp extends Comp {
         titlebar: GameObj;
         panel: GameObj;
+        title: string;
     }
 
-    function newWindow(title: string): GameObj<PosComp | AreaComp | WindowComp> {
+    function newWindow(title: string, {
+        position = k.vec2(0), // window position
+        size = k.vec2(0) // window size
+    } = {}): GameObj<PosComp | AreaComp | WindowComp> {
+        const dimensions = k.formatText({ text: title, size: 20 });
+
         const window = k.add([
-            k.pos(200, 100),
-            k.sprite("button", { width: 320, height: 250 }),
+            k.pos(position),
+            k.sprite("button", { width: size.x + 4, height: 2 + 25 + 2 + size.y + 2 }),
             k.area()
         ]) as any;
 
         const titlebar = window.add([
             k.pos(2, 2),
-            k.rect(320 - 4, 25),
+            k.rect(size.x + 4, 25),
             k.area(),
             k.color(80, 80, 255),
             k.ui({ type: "dragitem", proxy: window, bringToFront: true })
         ]);
 
+        const label = titlebar.add([
+            k.pos(4, 14),
+            k.text(title, {
+                size: 20
+            }),
+            k.anchor("left")
+        ])
+
         const panel = window.add([
             k.pos(2, 2 + 25 + 2),
-            k.rect(320 - 4, 250 - 2 - 25 - 2 - 2),
+            k.rect(size.x, size.y),
             k.color(k.WHITE),
             k.opacity(1.0),
             k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
@@ -45,15 +59,19 @@ k.onLoad(() => {
             id: "window",
             get titlebar() { return titlebar },
             get panel() { return panel },
+            get title() { return label.text; },
+            set title(value) { label.text = value; }
         });
 
         return window;
     }
 
-    const window = newWindow("Window");
+    const window = newWindow("Settings", { position: k.vec2(100, 50) });
 
     function resizeWindow(window, size) {
         [window.panel.width, window.panel.height] = [size.x, size.y];
+        // x = padding + panel.width + padding
+        // y + padding + titlebar.height + spacing + panel.height + padding
         [window.width, window.height] = [size.x + 4, 2 + 25 + 2 + size.y + 2];
         window.titlebar.width = size.x
     }
@@ -283,6 +301,8 @@ k.onLoad(() => {
         ])
         // Proxy so we can use slider directly
         slider.use({
+            id: "slider",
+            get thumb() { return thumb },
             get value() {
                 return thumb.value;
             },
@@ -296,8 +316,6 @@ k.onLoad(() => {
 
         thumb.onFocus(() => { slider.outline.color = k.BLACK; })
         thumb.onBlur(() => { slider.outline.color = k.WHITE; })
-
-        slider.thumb = thumb
 
         return slider
     }
@@ -436,7 +454,6 @@ k.onLoad(() => {
             k.color(k.BLACK)
         ])
 
-        // TODO: Fix draw order, since the menu needs to be drawn on top of everything else
         button.onAction(() => {
             const menu = newMenu(button, { position: k.vec2(0, 24), items: options })
             menu.onValueChanged(value => { selectedText.text = value; });
@@ -687,8 +704,7 @@ k.onLoad(() => {
         resizeWindow(window, window.panel.doLayout());
     });
 
-    // region video window
-    const window2 = newWindow("KVideo: UFO S01E01.mp4");
+    // region temporary texture copy
 
     class Texture {
         ctx: GfxCtx;
@@ -787,6 +803,7 @@ k.onLoad(() => {
         }
     }
 
+    // region video
     function video(url: string, width, height) {
         const _video: HTMLVideoElement = document.createElement("video");
         let _playing = false;
@@ -799,8 +816,8 @@ k.onLoad(() => {
             get currentTime() {
                 return _video.currentTime;
             },
-            set currentTime(time) {
-                _video.currentTime = time;
+            set currentTime(value) {
+                _video.currentTime = value;
             },
             get duration() {
                 return _video.duration;
@@ -811,11 +828,11 @@ k.onLoad(() => {
             pause() {
                 _video.pause();
             },
-            get muted() {
+            get mute() {
                 return _video.muted;
             },
-            set muted(muted) {
-                _video.muted = muted;
+            set mute(value) {
+                _video.muted = value;
             },
             add() {
                 _video.playsInline = true;
@@ -892,6 +909,9 @@ k.onLoad(() => {
         }
     }
 
+    // region video window
+    const window2 = newWindow("KVideo: UFO S01E01.mp4", { position: k.vec2(300, 50) });
+
     const videoPlane = window2.panel.add([
         k.area({ shape: new k.Rect(k.vec2(), 320 - 4, 250 - 2 - 25 - 2 - 2) }),
         k.ui({ type: "custom" }),
@@ -917,7 +937,7 @@ k.onLoad(() => {
         seek.value = videoPlane.currentTime / videoPlane.duration;
     });
     const mute = newCheckBox(panel3, { sprite: "media", frames: [3, 2] })
-    mute.onChecked((checked) => { videoPlane.muted = checked });
+    mute.onChecked((checked) => { videoPlane.mute = checked });
     mute.setChecked(true);
 
     panel3.doLayout();
