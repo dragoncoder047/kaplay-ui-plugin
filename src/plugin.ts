@@ -6,6 +6,7 @@ type UiElementCompOpt = {
     group?: string;
     checked?: boolean;
     proxy?: GameObj;
+    bringToFront?: boolean;
 };
 interface UiElementComp extends Comp {
     onPressed(action: () => void): KEventController;
@@ -174,6 +175,9 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                 }
                                 else if (_type === "dragitem") {
                                     const item = _proxy || this
+                                    if (opt.bringToFront && item.parent!.children[item.parent!.children.length] != item) {
+                                        item.parent!.readd(item);
+                                    }
                                     let pos = k.mousePos();
                                     let dpos = k.mouseDeltaPos();
                                     let ppos = pos.sub(dpos);

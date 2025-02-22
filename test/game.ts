@@ -1,4 +1,4 @@
-import kaplay, { AreaComp, Color, ColorComp, FixedComp, FormattedText, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt } from "kaplay";
+import kaplay, { AreaComp, Color, ColorComp, Comp, FixedComp, FormattedText, Game, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt } from "kaplay";
 import uiPlugin, { LayoutType } from "../src/plugin";
 
 const k = kaplay({
@@ -13,32 +13,49 @@ k.loadSprite("buttonpressed", "/sprites/buttonpressed.png", { slice9: { left: 3,
 
 k.onLoad(() => {
     // region main window
-    const window = k.add([
-        k.pos(200, 100),
-        k.sprite("button", { width: 320, height: 250 }),
-        k.area()
-    ])
+    interface WindowComp extends Comp {
+        titlebar: GameObj;
+        panel: GameObj;
+    }
 
-    const titlebar = window.add([
-        k.pos(2, 2),
-        k.rect(320 - 4, 25),
-        k.area(),
-        k.color(80, 80, 255),
-        k.ui({ type: "dragitem", proxy: window })
-    ])
+    function newWindow(title: string): GameObj<PosComp | AreaComp | WindowComp> {
+        const window = k.add([
+            k.pos(200, 100),
+            k.sprite("button", { width: 320, height: 250 }),
+            k.area()
+        ]) as any;
 
-    const panel = window.add([
-        k.pos(2, 2 + 25 + 2),
-        k.rect(320 - 4, 250 - 2 - 25 - 2 - 2),
-        k.color(k.WHITE),
-        k.opacity(1.0),
-        k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
-    ])
+        const titlebar = window.add([
+            k.pos(2, 2),
+            k.rect(320 - 4, 25),
+            k.area(),
+            k.color(80, 80, 255),
+            k.ui({ type: "dragitem", proxy: window, bringToFront: true })
+        ]);
 
-    function resizeWindow(window, titlebar, panel, size) {
-        [panel.width, panel.height] = [size.x, size.y];
+        const panel = window.add([
+            k.pos(2, 2 + 25 + 2),
+            k.rect(320 - 4, 250 - 2 - 25 - 2 - 2),
+            k.color(k.WHITE),
+            k.opacity(1.0),
+            k.layout({ type: "column", padding: 5, spacing: 5, columns: 2, maxWidth: 170 })
+        ]);
+
+        window.use({
+            id: "window",
+            get titlebar() { return titlebar },
+            get panel() { return panel },
+        });
+
+        return window;
+    }
+
+    const window = newWindow("Window");
+
+    function resizeWindow(window, size) {
+        [window.panel.width, window.panel.height] = [size.x, size.y];
         [window.width, window.height] = [size.x + 4, 2 + 25 + 2 + size.y + 2];
-        titlebar.width = size.x
+        window.titlebar.width = size.x
     }
 
     // region button
@@ -99,7 +116,7 @@ k.onLoad(() => {
         return button
     }
 
-    const button = newButton(panel, { position: k.vec2(80, 20), label: "Action" })
+    const button = newButton(window.panel, { position: k.vec2(80, 20), label: "Action" })
     button.onAction(() => { k.shake(); })
 
     // region checkbox
@@ -173,8 +190,8 @@ k.onLoad(() => {
         return checkbox;
     }
 
-    const checkbox = newCheckBox(panel, { position: k.vec2(80, 80), label: "Visible" })
-    checkbox.onChecked(checked => { panel.opacity = checked ? 1.0 : 0.0; })
+    const checkbox = newCheckBox(window.panel, { position: k.vec2(80, 80), label: "Visible" })
+    checkbox.onChecked(checked => { window.panel.opacity = checked ? 1.0 : 0.0; })
     checkbox.setChecked(true)
 
     // region radio
@@ -215,16 +232,16 @@ k.onLoad(() => {
         return radio
     }
 
-    const radio1 = newRadio(panel, { position: k.vec2(80, 120), label: "Row", width: 60, group: "radiogroup" })
-    const radio2 = newRadio(panel, { position: k.vec2(80, 160), label: "Column", width: 95, group: "radiogroup" })
-    const radio3 = newRadio(panel, { position: k.vec2(80, 200), label: "Grid", width: 75, group: "radiogroup" })
-    const radio4 = newRadio(panel, { position: k.vec2(80, 240), label: "Flex", width: 75, group: "radiogroup" })
+    const radio1 = newRadio(window.panel, { position: k.vec2(80, 120), label: "Row", width: 60, group: "radiogroup" })
+    const radio2 = newRadio(window.panel, { position: k.vec2(80, 160), label: "Column", width: 95, group: "radiogroup" })
+    const radio3 = newRadio(window.panel, { position: k.vec2(80, 200), label: "Grid", width: 75, group: "radiogroup" })
+    const radio4 = newRadio(window.panel, { position: k.vec2(80, 240), label: "Flex", width: 75, group: "radiogroup" })
 
-    radio1.onChecked(checked => { if (checked) { panel.type = "row"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
-    radio2.onChecked(checked => { if (checked) { panel.type = "column"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
+    radio1.onChecked(checked => { if (checked) { window.panel.type = "row"; resizeWindow(window, window.panel.doLayout()); } })
+    radio2.onChecked(checked => { if (checked) { window.panel.type = "column"; resizeWindow(window, window.panel.doLayout()); } })
     radio2.setChecked(true)
-    radio3.onChecked(checked => { if (checked) { panel.type = "grid"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
-    radio4.onChecked(checked => { if (checked) { panel.type = "flex"; resizeWindow(window, titlebar, panel, panel.doLayout()); } })
+    radio3.onChecked(checked => { if (checked) { window.panel.type = "grid"; resizeWindow(window, window.panel.doLayout()); } })
+    radio4.onChecked(checked => { if (checked) { window.panel.type = "flex"; resizeWindow(window, window.panel.doLayout()); } })
 
     // region slider
     /**
@@ -285,12 +302,12 @@ k.onLoad(() => {
         return slider
     }
 
-    const slider = newSlider(panel, { position: k.vec2(80, 260), label: "Red" })
+    const slider = newSlider(window.panel, { position: k.vec2(80, 260), label: "Red" })
     slider.value = 1;
 
     slider.onValueChanged(value => {
         k.debug.log(`Slider set to ${value}`)
-        panel.color = k.rgb(value * 255, 255, 255)
+        window.panel.color = k.rgb(value * 255, 255, 255)
     })
 
     // region group box
@@ -366,7 +383,7 @@ k.onLoad(() => {
         return box;
     }
 
-    const box = newGroupBox(panel, { label: "Crew settings" });
+    const box = newGroupBox(window.panel, { label: "Crew settings" });
 
     // region dropdown
     /**
@@ -436,8 +453,9 @@ k.onLoad(() => {
 
     // region menu
     type MenuHideOption = "destroy" | "hide"
-    function newMenu(parent, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
-        const menu = parent.add([
+    function newMenu(parent: GameObj<PosComp>, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
+        position = parent.toWorld(position)
+        const menu = k.add([
             k.pos(position),
             k.rect(200, 200),
             k.color(k.WHITE),
@@ -660,44 +678,17 @@ k.onLoad(() => {
         }
     }
 
-    newEdit(panel, { label: "Name", width: 0, value: "placeholder" });
+    newEdit(window.panel, { label: "Name", width: 0, value: "placeholder" });
 
-    resizeWindow(window, titlebar, panel, panel.doLayout());
+    resizeWindow(window, window.panel.doLayout());
 
     box.onCollapseChanged(collapsed => {
         k.debug.log(collapsed)
-        resizeWindow(window, titlebar, panel, panel.doLayout());
+        resizeWindow(window, window.panel.doLayout());
     });
 
     // region video window
-    const window2 = k.add([
-        k.pos(400, 100),
-        k.sprite("button", { width: 320, height: 250 }),
-        k.area()
-    ])
-
-    const titlebar2 = window2.add([
-        k.pos(2, 2),
-        k.rect(320 - 4, 25),
-        k.area(),
-        k.color(80, 80, 255),
-        k.ui({ type: "dragitem", proxy: window2 })
-    ])
-    titlebar2.add([
-        k.pos(4, 14),
-        k.text("KVideo: UFO S01E01.mp4", {
-            size: 20
-        }),
-        k.anchor("left")
-    ])
-
-    const panel2 = window2.add([
-        k.pos(2, 2 + 25 + 2),
-        k.rect(320 - 4, 250 - 2 - 25 - 2 - 2),
-        k.color(k.WHITE),
-        k.opacity(1.0),
-        k.layout({ type: "column", padding: 5, spacing: 5, columns: 1, maxWidth: 170 })
-    ])
+    const window2 = newWindow("KVideo: UFO S01E01.mp4");
 
     class Texture {
         ctx: GfxCtx;
@@ -901,14 +892,14 @@ k.onLoad(() => {
         }
     }
 
-    const videoPlane = panel2.add([
+    const videoPlane = window2.panel.add([
         k.area({ shape: new k.Rect(k.vec2(), 320 - 4, 250 - 2 - 25 - 2 - 2) }),
         k.ui({ type: "custom" }),
         //video("https://archive.org/download/ufo-s-01-e-01-identified/UFO%20S01E01%20-%20Identified.mp4", 320 - 4, 250 - 2 - 25 - 2 - 2)
         video("/sprites/UFO S01E01 - Identified.mp4", 320 - 4, 250 - 2 - 25 - 2 - 2)
     ])
 
-    const panel3 = panel2.add([
+    const panel3 = window2.panel.add([
         k.pos(0, 0),
         k.rect(320 - 4, 25),
         k.color(k.WHITE),
@@ -931,5 +922,5 @@ k.onLoad(() => {
 
     panel3.doLayout();
 
-    resizeWindow(window2, titlebar2, panel2, panel2.doLayout());
+    resizeWindow(window2, window2.panel.doLayout());
 });
