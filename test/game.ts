@@ -1,5 +1,5 @@
-import kaplay, { AreaComp, Color, ColorComp, Comp, FixedComp, FormattedText, Game, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt } from "kaplay";
-import uiPlugin, { LayoutType } from "../src/plugin";
+import kaplay, { AreaComp, Color, ColorComp, Comp, FixedComp, FormattedText, Game, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt, Vec2 } from "kaplay";
+import uiPlugin, { LayoutType, UIOrientation } from "../src/plugin";
 
 const k = kaplay({
     plugins: [uiPlugin],
@@ -13,21 +13,27 @@ k.loadSprite("buttonpressed", "/sprites/buttonpressed.png", { slice9: { left: 3,
 
 k.onLoad(() => {
     // region window
+    type WindowCompOpt = {
+        position?: Vec2,
+        size?: Vec2,
+        windowBorder?: string
+    }
+
     interface WindowComp extends Comp {
         titlebar: GameObj;
         panel: GameObj;
         title: string;
     }
 
-    function newWindow(title: string, {
-        position = k.vec2(0), // window position
-        size = k.vec2(0) // window size
-    } = {}): GameObj<PosComp | AreaComp | WindowComp> {
+    function newWindow(title: string, opt: WindowCompOpt): GameObj<PosComp | AreaComp | WindowComp> {
         const dimensions = k.formatText({ text: title, size: 20 });
+        const position = opt.position || k.vec2();
+        const size = opt.size || k.vec2();
+        const windowBorder = opt.windowBorder || "button";
 
         const window = k.add([
             k.pos(position),
-            k.sprite("button", { width: size.x + 4, height: 2 + 25 + 2 + size.y + 2 }),
+            k.sprite(windowBorder, { width: size.x + 4, height: 2 + 25 + 2 + size.y + 2 }),
             k.area()
         ]) as any;
 
@@ -262,16 +268,37 @@ k.onLoad(() => {
     radio4.onChecked(checked => { if (checked) { window.panel.type = "flex"; resizeWindow(window, window.panel.doLayout()); } })
 
     // region slider
+    type SliderCompOpt = {
+        position?: Vec2,
+        size?: Vec2,
+        label?: string,
+        orientation?: UIOrientation
+    };
+
     /**
      * Create a slider
      * @param parent Parent to attach the slider to
      * @param opt Options 
      * @returns The newly attached slider
      */
-    function newSlider(parent, { position = k.vec2(), label = "", group = "", width = 0 } = {}) {
+    function newSlider(parent, opt: SliderCompOpt) {
+        const position = opt.position || k.vec2();
+        const size = opt.size || k.vec2();
+        const label = opt.label || "";
+        const orientation = opt.orientation || "horizontal";
+
+        if (orientation === "horizontal") {
+            size.x = Math.max(100, size.x);
+            size.y = Math.max(20, size.y)
+        }
+        else {
+            size.x = Math.max(20, size.x);
+            size.y = Math.max(100, size.y)
+        }
+
         const dimensions = k.formatText({ text: label, size: 20 })
         const slider = parent.add([
-            k.rect(100, 20 + dimensions.height),
+            k.rect(size.x, size.y + dimensions.height),
             k.pos(position),
             k.area(),
             k.color(k.WHITE),
@@ -289,20 +316,26 @@ k.onLoad(() => {
             ])
             y += dimensions.height;
         }
-        const rail = slider.add([
-            k.sprite("buttonpressed", { width: slider.width - 8, height: 4 }),
-            k.pos(4, y + 8),
+        const gutter = slider.add([
+            orientation === "horizontal" ?
+                k.sprite("buttonpressed", { width: slider.width - 8, height: 4 }) :
+                k.sprite("buttonpressed", { width: 4, height: slider.height - 8 }),
+            orientation === "horizontal" ?
+                k.pos(4, y + 8) : k.pos(8, y + 4),
         ]);
         const thumb = slider.add([
-            k.sprite("button", { width: 10, height: 20 - 4 }),
+            orientation === "horizontal" ?
+                k.sprite("button", { width: 10, height: slider.height - 4 }) :
+                k.sprite("button", { width: slider.width - 4, height: 10 }),
             k.pos(2, y + 2),
             k.area(),
-            k.ui({ type: "sliderthumb" })
+            k.ui({ type: "sliderthumb", orientation })
         ])
         // Proxy so we can use slider directly
         slider.use({
             id: "slider",
             get thumb() { return thumb },
+            get gutter() { return gutter },
             get value() {
                 return thumb.value;
             },
@@ -659,7 +692,7 @@ k.onLoad(() => {
                     if (pos.x < textDimensions.chars[index].pos.x) { break; }
                     index++;
                 }
-                selectionStart = index;
+                selectionStart = Math.min(index, text.text.length);
                 selectionLength = 0;
                 updateCursor();
             }
@@ -943,4 +976,81 @@ k.onLoad(() => {
     panel3.doLayout();
 
     resizeWindow(window2, window2.panel.doLayout());
+
+    function newListView(parent: GameObj, { position = k.vec2(), width = 0 } = {}) {
+        const outerContainer = parent.add([
+            k.rect(width || 180, 400),
+            k.pos(position),
+            k.area(),
+            k.color(k.WHITE),
+            k.outline(1, k.WHITE),
+            k.ui({ type: "custom" }),
+            k.mask("intersect")
+        ]);
+
+        const innerContainer = outerContainer.add([
+            k.rect(width || 150, 400),
+            k.pos(position),
+            k.area(),
+            k.color(k.WHITE),
+            k.outline(1, k.WHITE),
+            k.layout({ type: "column" }),
+        ]);
+
+        const slider = newSlider(outerContainer, {
+            position: k.vec2(outerContainer.width - 20, 0),
+            size: k.vec2(20, outerContainer.height),
+            orientation: "vertical"
+        })
+        slider.gutter.pos = k.vec2(1, 1);
+        slider.gutter.width = 18;
+        slider.gutter.height = outerContainer.height - 2;
+        slider.thumb.height = 200;
+        slider.value = 0;
+
+        slider.onValueChanged(value => {
+            innerContainer.pos.y = k.clamp((outerContainer.height - innerContainer.height) * value, outerContainer.height - innerContainer.height, 0);
+        })
+
+        let dragId;
+        let dragPos;
+
+        innerContainer.onMousePress(button => {
+            if (innerContainer.isHovering()) {
+                dragId = button;
+                dragPos = k.mousePos();
+            }
+        });
+
+        innerContainer.onMouseMove(button => {
+            if (dragId) {
+                const pos = k.mousePos();
+                const deltaPos = pos.sub(dragPos);
+                innerContainer.pos.y = k.clamp(innerContainer.pos.y + deltaPos.y, outerContainer.height - innerContainer.height, 0);
+                dragPos = pos;
+            }
+        });
+
+        innerContainer.onMouseRelease(button => {
+            dragId = null;
+        });
+
+        for (let i = 0; i < 20; i++) {
+            innerContainer.add([
+                k.text(`item ${i}`),
+                k.area(),
+                k.color(k.BLACK)
+            ])
+        }
+
+        const size = innerContainer.doLayout();
+        [innerContainer.width, innerContainer.height] = [size.x, size.y];
+    }
+
+    // region list view
+    const window3 = newWindow("List", { position: k.vec2(635, 50) });
+
+    newListView(window3.panel, {});
+
+    resizeWindow(window3, window3.panel.doLayout());
 });

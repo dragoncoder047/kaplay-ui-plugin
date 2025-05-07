@@ -7,7 +7,9 @@ type UiElementCompOpt = {
     checked?: boolean;
     proxy?: GameObj;
     bringToFront?: boolean;
+    orientation?: UIOrientation;
 };
+export type UIOrientation = "horizontal" | "vertical";
 interface UiElementComp extends Comp {
     onPressed(action: () => void): KEventController;
     onReleased(action: () => void): KEventController;
@@ -106,13 +108,14 @@ export default function kaplayUi(k: KAPLAYCtx) {
             if (_type === "radio" && !opt.group) {
                 throw new Error("Radiobuttons need a group");
             }
+            const _orientation: UIOrientation = opt.orientation || "horizontal";
             const _group = opt.group || null
             const _proxy = opt.proxy || null
             return {
                 id: "ui",
                 require: ["area"],
                 add(this: GameObj) {
-                    // Initialisation
+                    // Initialization
                     this.tag(_type)
                     this.tag("canfocus")
                     switch (_type) {
@@ -162,15 +165,22 @@ export default function kaplayUi(k: KAPLAYCtx) {
                             else {
                                 if (_type === "sliderthumb") {
                                     const leftLimit = 2;
-                                    const rightLimit = this.parent?.width - this.width - 2;
+                                    const rightLimit = _orientation == "horizontal" ?
+                                        this.parent?.width - this.width - 2 :
+                                        this.parent?.height - this.height - 2;
                                     let pos = k.mousePos();
                                     let dpos = k.mouseDeltaPos();
                                     let ppos = pos.sub(dpos);
-                                    const inv = this.parent?.transform.invert();
-                                    pos = inv!.multVec2(pos);
-                                    ppos = inv!.multVec2(ppos);
+                                    const inv = this.parent!.transform.invert();
+                                    pos = inv.multVec2(pos);
+                                    ppos = inv.multVec2(ppos);
                                     const npos = this.pos.add(pos).sub(ppos);
-                                    this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
+                                    if (_orientation == "horizontal") {
+                                        this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
+                                    }
+                                    else {
+                                        this.pos.y = k.clamp(npos.y, leftLimit, rightLimit);
+                                    }
                                     this.trigger("valueChanged", this.value);
                                 }
                                 else if (_type === "dragitem") {
@@ -245,7 +255,9 @@ export default function kaplayUi(k: KAPLAYCtx) {
                         case "radio":
                             return this.isChecked() ? 1 : 0;
                         case "sliderthumb":
-                            return (uiElement.pos.x - 2) / (uiElement.parent!.width - uiElement.width - 4);
+                            return _orientation == "horizontal" ?
+                                (uiElement.pos.x - 2) / (uiElement.parent!.width - uiElement.width - 4) :
+                                (uiElement.pos.y - 2) / (uiElement.parent!.height - uiElement.height - 4);
                     }
                     return 0
                 },
@@ -257,7 +269,12 @@ export default function kaplayUi(k: KAPLAYCtx) {
                             this.setChecked(value != 0);
                             break;
                         case "sliderthumb":
-                            uiElement.pos.x = value * (uiElement.parent!.width - uiElement.width - 4) + 2;
+                            if (_orientation == "horizontal") {
+                                uiElement.pos.x = value * (uiElement.parent!.width - uiElement.width - 4) + 2;
+                            }
+                            else {
+                                uiElement.pos.y = value * (uiElement.parent!.height - uiElement.height - 4) + 2;
+                            }
                     }
                 },
                 get type() {
@@ -273,7 +290,7 @@ export default function kaplayUi(k: KAPLAYCtx) {
             let _maxWidth = opt.maxWidth ?? Infinity
             return {
                 add(this: GameObj) {
-                    // Initialisation
+                    // Initialization
                     this.tag(_type)
                     this.doLayout()
                 },
