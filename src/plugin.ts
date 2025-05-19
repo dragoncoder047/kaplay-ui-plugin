@@ -1,7 +1,7 @@
 import { KAPLAYCtx, Comp, GameObj, Vec2, KEventController } from "kaplay";
 
-type UiType = "custom" | "button" | "radio" | "checkbox" | "sliderthumb" | "dragitem";
-type UiElementCompOpt = {
+export type UiType = "custom" | "button" | "radio" | "checkbox" | "sliderthumb" | "dragitem";
+export type UiElementCompOpt = {
     type?: UiType;
     group?: string;
     checked?: boolean;
@@ -10,7 +10,7 @@ type UiElementCompOpt = {
     orientation?: UIOrientation;
 };
 export type UIOrientation = "horizontal" | "vertical";
-interface UiElementComp extends Comp {
+export interface UiElementComp extends Comp {
     onPressed(action: () => void): KEventController;
     onReleased(action: () => void): KEventController;
     onChecked(action: (checked: boolean) => void): KEventController;

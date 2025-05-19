@@ -1,5 +1,5 @@
-import kaplay, { AreaComp, Color, ColorComp, Comp, FixedComp, FormattedText, Game, GameObj, GfxCtx, ImageSource, KEventController, PosComp, TextComp, Texture, TextureOpt, Vec2 } from "kaplay";
-import uiPlugin, { LayoutType, UIOrientation } from "../src/plugin";
+import kaplay, { AreaComp, Asset, Color, ColorComp, Comp, FixedComp, FormattedText, Game, GameObj, GfxCtx, ImageSource, KEventController, PosComp, SpriteData, TextComp, Texture, TextureOpt, Vec2 } from "kaplay";
+import uiPlugin, { LayoutType, UIOrientation, UiElementComp } from "../src/plugin";
 
 const k = kaplay({
     plugins: [uiPlugin],
@@ -16,7 +16,7 @@ k.onLoad(() => {
     type WindowCompOpt = {
         position?: Vec2,
         size?: Vec2,
-        windowBorder?: string
+        windowBorder?: string | SpriteData | Asset<SpriteData>
     }
 
     interface WindowComp extends Comp {
@@ -275,13 +275,18 @@ k.onLoad(() => {
         orientation?: UIOrientation
     };
 
+    interface SliderComp extends UiElementComp {
+        thumb: GameObj;
+        gutter: GameObj;
+    };
+
     /**
      * Create a slider
      * @param parent Parent to attach the slider to
      * @param opt Options 
      * @returns The newly attached slider
      */
-    function newSlider(parent, opt: SliderCompOpt) {
+    function newSlider(parent, opt: SliderCompOpt): GameObj<PosComp> & SliderComp {
         const position = opt.position || k.vec2();
         const size = opt.size || k.vec2();
         const label = opt.label || "";
@@ -362,13 +367,19 @@ k.onLoad(() => {
     })
 
     // region group box
+
+    interface GroupBoxComp {
+        content: GameObj<PosComp>;
+        onCollapseChanged(action: (collapsed: boolean) => void)
+    };
+
     /**
      * Create a group box
      * @param parent Parent to attach the group box to
      * @param opt Options 
      * @returns The newly attached group box
      */
-    function newGroupBox(parent, { position = k.vec2(), label = "", layout = "column" } = {}) {
+    function newGroupBox(parent, { position = k.vec2(), label = "", layout = "column" } = {}): GameObj<PosComp> & GroupBoxComp {
         const dimensions = k.formatText({ text: "  " + label, size: 20 })
         let collapsed = false;
         const box = parent.add([
@@ -437,13 +448,26 @@ k.onLoad(() => {
     const box = newGroupBox(window.panel, { label: "Crew settings" });
 
     // region dropdown
+
+    type DropdownCompOpt = {
+        position?: Vec2;
+        label?: string;
+        options: string[];
+        selected: string;
+    }
+
     /**
      * Create a dropdown
      * @param parent Parent to attach the dropdown to
      * @param opt Options 
      * @returns The newly attached dropdown
      */
-    function newDropdown(parent, { position = k.vec2(), label = "", group = "", width = 0, options = [""], selected = "" } = {}) {
+    function newDropdown(parent, opt: DropdownCompOpt) {
+        const position = opt.position || k.vec2();
+        const label = opt.label || "";
+        const options = opt.options || [];
+        const selected = opt.selected || "";
+
         const dimensions = k.formatText({ text: label, size: 20 })
         const dropdown = parent.add([
             k.rect(100, 24 + dimensions.height),
@@ -499,7 +523,7 @@ k.onLoad(() => {
         k.pos(0, 0),
         k.sprite("bean")
     ])
-    newDropdown(box.content, { position: k.vec2(80, 280), label: "Crew", width: 0, options: ["bean", "beant"], selected: "bean" });
+    newDropdown(box.content, { position: k.vec2(80, 280), label: "Crew", options: ["bean", "beant"], selected: "bean" });
 
     // region menu
     type MenuHideOption = "destroy" | "hide"
