@@ -52,57 +52,49 @@ export default function kaplayUi(k: KAPLAYCtx) {
         return focus
     }
 
-    k.onKeyPress("enter", () => {
-        const focus = getFocus()
-        if (focus) {
-            focus.tag("pressed")
-            focus.trigger("pressed")
-        }
-    });
-
-    k.onKeyRelease("enter", () => {
-        const focus = getFocus()
-        if (focus /*&& focus.is("pressed")*/) { // TODO: why isn't it pressed?
-            focus.untag("pressed")
-            if (focus.is("button")) {
-                focus.trigger("action")
-            }
-            focus.trigger("released")
-        }
-    });
-
-    k.onKeyPress("tab", () => {
-        const focus = getFocus()
-        const uiElements = k.get("canfocus", { recursive: true })
-        if (focus) {
-            const index = uiElements.indexOf(focus)
-            const direction = k.isKeyDown("shift") ? -1 : 1
-            if (index >= 0) {
-                let nextFocus = uiElements[(index + direction) % uiElements.length]
-                nextFocus.setFocus()
-                return
-            }
-        }
-        uiElements[0].setFocus()
-    })
-
-    k.onKeyRelease("left", () => {
-        const focus = getFocus()
-        if (focus && focus.type === "sliderthumb") {
-            focus.value = Math.max(focus.value - (k.isKeyDown("shift") ? 0.01 : 0.1), 0)
-            focus.trigger("valueChanged", focus.value)
-        }
-    });
-
-    k.onKeyRelease("right", () => {
-        const focus = getFocus()
-        if (focus && focus.type === "sliderthumb") {
-            focus.value = Math.min(focus.value + (k.isKeyDown("shift") ? 0.01 : 0.1), 1)
-            focus.trigger("valueChanged", focus.value)
-        }
-    });
-
     return {
+        uiInput: {
+            push(pressed: boolean) {
+                const focus = getFocus()
+                if (pressed) {
+                    if (focus) {
+                        focus.tag("pressed")
+                        focus.trigger("pressed")
+                    }
+                } else {
+                    if (focus /*&& focus.is("pressed")*/) { // TODO: why isn't it pressed?
+                        focus.untag("pressed")
+                        if (focus.is("button")) {
+                            focus.trigger("action")
+                        }
+                        focus.trigger("released")
+                    }
+                }
+            },
+
+            navigate(forward = true) {
+                const focus = getFocus()
+                const uiElements = k.get("canfocus", { recursive: true })
+                if (focus) {
+                    const index = uiElements.indexOf(focus)
+                    const direction = forward ? 1 : -1
+                    if (index >= 0) {
+                        let nextFocus = uiElements[(index + direction) % uiElements.length]
+                        nextFocus.setFocus()
+                        return
+                    }
+                }
+                uiElements[0].setFocus()
+            },
+
+            dragSlider(by: number) {
+                const focus = getFocus()
+                if (focus && focus.type === "sliderthumb") {
+                    focus.value = k.clamp(focus.value + by, 0, 1)
+                    focus.trigger("valueChanged", focus.value)
+                }
+            },
+        },
         ui(opt: UiElementCompOpt): UiElementComp {
             const _type: UiType = opt.type || "custom";
             if (_type === "radio" && !opt.group) {
@@ -171,9 +163,9 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                     let pos = k.mousePos();
                                     let dpos = k.mouseDeltaPos();
                                     let ppos = pos.sub(dpos);
-                                    const inv = this.parent!.transform.invert();
-                                    pos = inv.multVec2(pos);
-                                    ppos = inv.multVec2(ppos);
+                                    const inv = this.parent!.transform.inverse;
+                                    pos = inv.transform(pos);
+                                    ppos = inv.transform(ppos);
                                     const npos = this.pos.add(pos).sub(ppos);
                                     if (_orientation == "horizontal") {
                                         this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
@@ -191,9 +183,9 @@ export default function kaplayUi(k: KAPLAYCtx) {
                                     let pos = k.mousePos();
                                     let dpos = k.mouseDeltaPos();
                                     let ppos = pos.sub(dpos);
-                                    const inv = item.parent?.transform.invert();
-                                    pos = inv!.multVec2(pos);
-                                    ppos = inv!.multVec2(ppos);
+                                    const inv = item.parent!.transform.inverse;
+                                    pos = inv.transform(pos);
+                                    ppos = inv.transform(ppos);
                                     item.pos = item.pos.add(pos).sub(ppos);
                                 }
                             }
