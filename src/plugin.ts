@@ -130,67 +130,67 @@ export default function kaplayUi(k: KAPLAYCtx) {
                         this.setFocus();
                         this.trigger("pressed");
                     });
-                    this.onUpdate(() => {
-                        if (this.is("pressed")) {
-                            if (!k.isMouseDown()) {
-                                this.untag("pressed");
-                                if (_type === "button") {
-                                    if (this.isHovering()) {
-                                        this.trigger("action");
-                                    }
+                },
+                update(this: GameObj) {
+                    if (this.is("pressed")) {
+                        if (!k.isMouseDown()) {
+                            this.untag("pressed");
+                            if (_type === "button") {
+                                if (this.isHovering()) {
+                                    this.trigger("action");
                                 }
-                                else if (_type === "checkbox") {
-                                    this.setChecked(!this.isChecked());
-                                }
-                                else if (_type === "radio") {
-                                    if (!this.isChecked()) {
-                                        k.get(["radio", _group!], { recursive: true }).forEach((radio: GameObj) => {
-                                            if (radio !== this) {
-                                                radio.setChecked(false);
-                                            }
-                                        })
-                                        this.setChecked(true);
-                                    }
-                                }
-                                this.trigger("released");
                             }
-                            else {
-                                if (_type === "sliderthumb") {
-                                    const leftLimit = 2;
-                                    const rightLimit = _orientation == "horizontal" ?
-                                        this.parent?.width - this.width - 2 :
-                                        this.parent?.height - this.height - 2;
-                                    let pos = k.mousePos();
-                                    let dpos = k.mouseDeltaPos();
-                                    let ppos = pos.sub(dpos);
-                                    const inv = this.parent!.transform.inverse;
-                                    pos = inv.transform(pos);
-                                    ppos = inv.transform(ppos);
-                                    const npos = this.pos.add(pos).sub(ppos);
-                                    if (_orientation == "horizontal") {
-                                        this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
-                                    }
-                                    else {
-                                        this.pos.y = k.clamp(npos.y, leftLimit, rightLimit);
-                                    }
-                                    this.trigger("valueChanged", this.value);
+                            else if (_type === "checkbox") {
+                                this.setChecked(!this.isChecked());
+                            }
+                            else if (_type === "radio") {
+                                if (!this.isChecked()) {
+                                    k.get(["radio", _group!], { recursive: true }).forEach((radio: GameObj) => {
+                                        if (radio !== this) {
+                                            radio.setChecked(false);
+                                        }
+                                    })
+                                    this.setChecked(true);
                                 }
-                                else if (_type === "dragitem") {
-                                    const item = _proxy || this
-                                    if (opt.bringToFront && item.parent!.children[item.parent!.children.length] != item) {
-                                        item.parent!.readd(item);
-                                    }
-                                    let pos = k.mousePos();
-                                    let dpos = k.mouseDeltaPos();
-                                    let ppos = pos.sub(dpos);
-                                    const inv = item.parent!.transform.inverse;
-                                    pos = inv.transform(pos);
-                                    ppos = inv.transform(ppos);
-                                    item.pos = item.pos.add(pos).sub(ppos);
+                            }
+                            this.trigger("released");
+                        }
+                        else {
+                            if (_type === "sliderthumb") {
+                                const leftLimit = 2;
+                                const rightLimit = _orientation == "horizontal" ?
+                                    this.parent?.width - this.width - 2 :
+                                    this.parent?.height - this.height - 2;
+                                let pos = k.mousePos();
+                                let dpos = k.mouseDeltaPos();
+                                let ppos = pos.sub(dpos);
+                                const inv = this.parent!.transform.inverse;
+                                pos = inv.transform(pos);
+                                ppos = inv.transform(ppos);
+                                const npos = this.pos.add(pos).sub(ppos);
+                                if (_orientation == "horizontal") {
+                                    this.pos.x = k.clamp(npos.x, leftLimit, rightLimit);
                                 }
+                                else {
+                                    this.pos.y = k.clamp(npos.y, leftLimit, rightLimit);
+                                }
+                                this.trigger("valueChanged", this.value);
+                            }
+                            else if (_type === "dragitem") {
+                                const item = _proxy || this
+                                if (opt.bringToFront && item.parent!.children[item.parent!.children.length] != item) {
+                                    item.parent!.readd(item);
+                                }
+                                let pos = k.mousePos();
+                                let dpos = k.mouseDeltaPos();
+                                let ppos = pos.sub(dpos);
+                                const inv = item.parent!.transform.inverse;
+                                pos = inv.transform(pos);
+                                ppos = inv.transform(ppos);
+                                item.pos = item.pos.add(pos).sub(ppos);
                             }
                         }
-                    })
+                    }
                 },
                 onPressed(this: GameObj, action: any) {
                     return this.on("pressed", action);

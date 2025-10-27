@@ -1,4 +1,4 @@
-import kaplay, { AreaComp, Color, ColorComp, Comp, FixedComp, FormattedText, GameObj, KEventController, MouseButton, PosComp, TextComp, Vec2 } from "kaplay";
+import kaplay, { AreaComp, ColorComp, Comp, FixedComp, FormattedText, GameObj, KEventController, MouseButton, PosComp, TextComp, Vec2 } from "kaplay";
 import uiPlugin, { LayoutType, UIOrientation, UiElementComp } from "../src/plugin";
 
 const k = kaplay({
@@ -422,6 +422,8 @@ k.onLoad(() => {
                 });
             },
         } as GroupBoxComp & Comp)
+        collapse.onFocus(() => { box.outline.color = k.BLACK; })
+        collapse.onBlur(() => { box.outline.color = k.WHITE; })
 
         return box as any;
     }
@@ -493,9 +495,12 @@ k.onLoad(() => {
         ])
 
         button.onAction(() => {
+            // TODO: insert them so that their tabindex is right after the button's
             const menu = newMenu(button, { position: k.vec2(0, 24), items: options })
             menu.onValueChanged(value => { selectedText.text = value; });
         })
+        button.onFocus(() => { dropdown.outline.color = k.BLACK; })
+        button.onBlur(() => { dropdown.outline.color = k.WHITE; })
 
         return dropdown;
     }
@@ -507,7 +512,7 @@ k.onLoad(() => {
     newDropdown(box.content, { position: k.vec2(80, 280), label: "Crew", options: ["bean", "beant"], selected: "bean" });
 
     // region menu
-    function newMenu(parent: GameObj<PosComp>, { position = k.vec2(), label = "", items = [""], hideOption = "destroy" } = {}) {
+    function newMenu(parent: GameObj<PosComp>, { position = k.vec2(), items = [""], hideOption = "destroy" } = {}) {
         position = parent.toWorld(position)
         const menu = k.add([
             k.pos(position),
@@ -573,7 +578,7 @@ k.onLoad(() => {
      * @param opt Options 
      * @returns The newly attached edit control
      */
-    function newEdit(parent: GameObj, { position = k.vec2(), label = "", width = 0, value = "", size = 20, font = undefined } = {}) {
+    function newEdit(parent: GameObj, { position = k.vec2(), width = 0, value = "", size = 20, font = undefined } = {}) {
         let selectionStart: number = value.length;
         let selectionLength: number = 0;
         let textDimensions: FormattedText = k.formatText({ text: value, size });
@@ -717,7 +722,7 @@ k.onLoad(() => {
         }
     }
 
-    newEdit(window.panel, { label: "Name", width: 0, value: "placeholder" });
+    newEdit(window.panel, { width: 0, value: "placeholder" });
 
     resizeWindow(window, window.panel.doLayout());
 
@@ -761,6 +766,7 @@ k.onLoad(() => {
 
     resizeWindow(window2, window2.panel.doLayout());
 
+    // region list view
     function newListView(parent: GameObj, { position = k.vec2(), width = 0 } = {}) {
         const outerContainer = parent.add([
             k.rect(width || 180, 400),
@@ -814,17 +820,17 @@ k.onLoad(() => {
 
         innerContainer.onScroll(delta => {
             if (innerContainer.isHovering()) {
-                scrollToPos(slider.value = k.clamp(slider.value + delta.y / maxScroll(), 0, 1));
+                scrollToPos(slider.value = k.clamp(slider.value - delta.y / maxScroll(), 0, 1));
             }
         })
 
-        innerContainer.onMouseMove(button => {
+        innerContainer.onMouseMove(_ => {
             if (dragId) {
                 scrollToPos(slider.value = k.clamp(slider.value + k.mouseDeltaPos().y / maxScroll(), 0, 1));
             }
         });
 
-        innerContainer.onMouseRelease(button => {
+        innerContainer.onMouseRelease(_ => {
             dragId = null;
         });
 
@@ -840,7 +846,6 @@ k.onLoad(() => {
         [innerContainer.width, innerContainer.height] = [size.x, size.y];
     }
 
-    // region list view
     const window3 = newWindow("List", { position: k.vec2(635, 50) });
 
     newListView(window3.panel, {});
