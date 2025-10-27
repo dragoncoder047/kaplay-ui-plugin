@@ -792,26 +792,35 @@ k.onLoad(() => {
         slider.thumb.height = 200;
         slider.value = 0;
 
+        function maxScroll() {
+            return outerContainer.height - innerContainer.height;
+        }
+
+        function scrollToPos(pos: number) {
+            innerContainer.pos.y = k.lerp(0, maxScroll(), pos);
+        }
+
         slider.onValueChanged(value => {
-            innerContainer.pos.y = k.clamp((outerContainer.height - innerContainer.height) * value, outerContainer.height - innerContainer.height, 0);
+            scrollToPos(value);
         })
 
         let dragId: MouseButton | null;
-        let dragPos: Vec2;
 
         innerContainer.onMousePress(button => {
             if (innerContainer.isHovering()) {
                 dragId = button;
-                dragPos = k.mousePos();
             }
         });
 
+        innerContainer.onScroll(delta => {
+            if (innerContainer.isHovering()) {
+                scrollToPos(slider.value = k.clamp(slider.value + delta.y / maxScroll(), 0, 1));
+            }
+        })
+
         innerContainer.onMouseMove(button => {
             if (dragId) {
-                const pos = k.mousePos();
-                const deltaPos = pos.sub(dragPos);
-                innerContainer.pos.y = k.clamp(innerContainer.pos.y + deltaPos.y, outerContainer.height - innerContainer.height, 0);
-                dragPos = pos;
+                scrollToPos(slider.value = k.clamp(slider.value + k.mouseDeltaPos().y / maxScroll(), 0, 1));
             }
         });
 
